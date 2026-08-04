@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>kepubify-web — EPUB → KEPUB em lote, direto no navegador</title>
+<meta name="description" content="Converta vários EPUBs para o formato KEPUB do Kobo, tudo no seu navegador. Nenhum arquivo é enviado a um servidor.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <span class="eyebrow">conversor local · sem upload</span>
+    <h1>kepubify<span class="dash">‑</span>web</h1>
+    <p class="tagline">Solte seus EPUBs. Saem KEPUBs prontos pro seu Kobo — todos de uma vez, sem sair da aba.</p>
+  </div>
+</header>
+
+<main>
+
+  <section class="dropzone-section" aria-labelledby="drop-heading">
+    <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-describedby="drop-hint">
+      <svg class="book-icon" viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M8 12c6-4 14-4 20 0v36c-6-4-14-4-20 0V12z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M56 12c-6-4-14-4-20 0v36c6-4 14-4 20 0V12z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+      </svg>
+      <p id="drop-heading" class="drop-title">Arraste arquivos .epub aqui</p>
+      <p id="drop-hint" class="drop-hint">ou toque para escolher — pode selecionar vários de uma vez</p>
+      <input id="file-input" type="file" accept=".epub,application/epub+zip" multiple hidden>
+    </div>
+    <p id="wasm-status" class="wasm-status">carregando o conversor…</p>
+  </section>
+
+  <section class="queue-section" aria-live="polite">
+    <div class="queue-header">
+      <h2>Fila de conversão</h2>
+      <div class="queue-actions">
+        <button id="convert-all" class="btn btn-primary" disabled>Converter tudo</button>
+        <button id="download-all" class="btn btn-accent" disabled>Baixar tudo (.zip)</button>
+        <button id="clear-all" class="btn btn-ghost" disabled>Limpar</button>
+      </div>
+    </div>
+    <ol id="file-list" class="file-list"></ol>
+    <p id="empty-hint" class="empty-hint">Nenhum livro na fila ainda.</p>
+  </section>
+
+  <section class="about">
+    <h2>Como funciona</h2>
+    <p>Esta página compila a biblioteca de conversão do <a href="https://github.com/pgaskin/kepubify" target="_blank" rel="noopener">kepubify</a> para WebAssembly e roda ela inteiramente no seu navegador. Nenhum arquivo sai do seu dispositivo — a conversão acontece localmente, arquivo por arquivo, e o resultado fica pronto para baixar individualmente ou todos juntos em um <code>.zip</code>.</p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>Baseado em <a href="https://github.com/pgaskin/kepubify" target="_blank" rel="noopener">pgaskin/kepubify</a>, de Patrick Gaskin — licenciado sob <a href="https://github.com/pgaskin/kepubify/blob/master/LICENSE" target="_blank" rel="noopener">MIT</a>. Este site também é distribuído sob MIT; código‑fonte no <a href="https://github.com/OWNER/kepubify-web" target="_blank" rel="noopener">repositório</a>.</p>
+</footer>
+
+<script src="wasm_exec.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
