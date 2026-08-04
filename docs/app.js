@@ -192,6 +192,25 @@ clearAllBtn.addEventListener("click", () => {
   renderQueue();
 });
 
+// ---- Tabs -----------------------------------------------------------------
+
+const tabBtnBatch = document.getElementById("tab-btn-batch");
+const tabBtnMeta = document.getElementById("tab-btn-meta");
+const tabBatch = document.getElementById("tab-batch");
+const tabMeta = document.getElementById("tab-meta");
+
+function activateTab(which) {
+  const onBatch = which === "batch";
+  tabBtnBatch.classList.toggle("active", onBatch);
+  tabBtnMeta.classList.toggle("active", !onBatch);
+  tabBtnBatch.setAttribute("aria-selected", String(onBatch));
+  tabBtnMeta.setAttribute("aria-selected", String(!onBatch));
+  tabBatch.hidden = !onBatch;
+  tabMeta.hidden = onBatch;
+}
+tabBtnBatch.addEventListener("click", () => activateTab("batch"));
+tabBtnMeta.addEventListener("click", () => activateTab("meta"));
+
 downloadAllBtn.addEventListener("click", async () => {
   const done = queue.filter((q) => q.status === "done" && q.outBlob);
   if (!done.length) return;

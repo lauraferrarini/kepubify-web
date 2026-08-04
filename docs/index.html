@@ -23,6 +23,13 @@
 
 <main>
 
+  <nav class="tabs" role="tablist" aria-label="Modo">
+    <button class="tab-btn active" id="tab-btn-batch" role="tab" aria-selected="true" aria-controls="tab-batch">Converter em lote</button>
+    <button class="tab-btn" id="tab-btn-meta" role="tab" aria-selected="false" aria-controls="tab-meta">Editar metadados</button>
+  </nav>
+
+  <section id="tab-batch" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-batch">
+
   <section class="dropzone-section" aria-labelledby="drop-heading">
     <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-describedby="drop-hint">
       <svg class="book-icon" viewBox="0 0 64 64" aria-hidden="true">
@@ -54,6 +61,27 @@
     <p>Esta página compila a biblioteca de conversão do <a href="https://github.com/pgaskin/kepubify" target="_blank" rel="noopener">kepubify</a> para WebAssembly e roda ela inteiramente no seu navegador. Nenhum arquivo sai do seu dispositivo — a conversão acontece localmente, arquivo por arquivo, e o resultado fica pronto para baixar individualmente ou todos juntos em um <code>.zip</code>.</p>
   </section>
 
+  </section><!-- /tab-batch -->
+
+  <section id="tab-meta" class="tab-panel" hidden role="tabpanel" aria-labelledby="tab-btn-meta">
+
+    <section class="dropzone-section" aria-labelledby="meta-drop-heading">
+      <div id="meta-dropzone" class="dropzone" tabindex="0" role="button" aria-describedby="meta-drop-hint">
+        <svg class="book-icon" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M8 12c6-4 14-4 20 0v36c-6-4-14-4-20 0V12z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+          <path d="M56 12c-6-4-14-4-20 0v36c6-4 14-4 20 0V12z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+        </svg>
+        <p id="meta-drop-heading" class="drop-title">Arraste .epub aqui pra editar</p>
+        <p id="meta-drop-hint" class="drop-hint">título, autor(a) e capa — depois converte pra KEPUB</p>
+        <input id="meta-file-input" type="file" accept=".epub,application/epub+zip" multiple hidden>
+      </div>
+    </section>
+
+    <ol id="meta-list" class="meta-list"></ol>
+    <p id="meta-empty-hint" class="empty-hint">Nenhum livro carregado ainda.</p>
+
+  </section><!-- /tab-meta -->
+
 </main>
 
 <footer class="site-footer">
@@ -63,5 +91,6 @@
 <script src="wasm_exec.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="app.js"></script>
+<script src="metadata.js"></script>
 </body>
 </html>
