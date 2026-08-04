@@ -29,6 +29,7 @@ async function loadWasm() {
     wasmStatus.textContent = "conversor pronto — tudo roda localmente, nada é enviado a servidor";
     wasmStatus.classList.add("ready");
     updateButtons();
+    window.dispatchEvent(new Event("kepubify-wasm-ready"));
   } catch (err) {
     console.error(err);
     wasmStatus.textContent = "falha ao carregar o conversor: " + err.message;

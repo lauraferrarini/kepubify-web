@@ -12,6 +12,8 @@ const metaEmptyHint = document.getElementById("meta-empty-hint");
 const metaQueue = [];
 let metaNextId = 1;
 
+window.addEventListener("kepubify-wasm-ready", renderMetaList);
+
 // ---- intake ---------------------------------------------------------------
 
 metaDropzone.addEventListener("click", () => metaFileInput.click());
