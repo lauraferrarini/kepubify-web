@@ -52,11 +52,16 @@ loadWasm();
 // ---- File intake ----------------------------------------------------------
 
 function addFiles(fileListLike) {
-  const files = Array.from(fileListLike).filter((f) =>
-    f.name.toLowerCase().endsWith(".epub")
-  );
+  const all = Array.from(fileListLike);
+  const files = all.filter((f) => f.name.toLowerCase().endsWith(".epub"));
   for (const file of files) {
     queue.push({ id: nextId++, file, status: "pending" });
+  }
+  if (all.length && !files.length) {
+    wasmStatus.textContent = `${all.length} arquivo(s) selecionado(s), mas nenhum termina em ".epub" — nome recebido: ${all.map((f) => f.name).join(", ")}`;
+    wasmStatus.classList.add("failed");
+  } else if (files.length) {
+    wasmStatus.classList.remove("failed");
   }
   renderQueue();
 }

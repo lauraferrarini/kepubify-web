@@ -42,9 +42,15 @@ metaDropzone.addEventListener("drop", (e) => {
 });
 
 function addMetaFiles(fileListLike) {
-  const files = Array.from(fileListLike).filter((f) => f.name.toLowerCase().endsWith(".epub"));
+  const all = Array.from(fileListLike);
+  const files = all.filter((f) => f.name.toLowerCase().endsWith(".epub"));
   for (const file of files) {
     metaQueue.push({ id: metaNextId++, file, status: "loading" });
+  }
+  if (all.length && !files.length) {
+    metaEmptyHint.textContent = `${all.length} arquivo(s) selecionado(s), mas nenhum termina em ".epub" — nome recebido: ${all.map((f) => f.name).join(", ")}`;
+  } else {
+    metaEmptyHint.textContent = "Nenhum livro carregado ainda.";
   }
   renderMetaList();
   for (const item of metaQueue.filter((q) => q.status === "loading")) {
