@@ -1,4 +1,4 @@
-module github.com/OWNER/kepubify-web/wasmsrc
+module github.com/lauraferrarini/kepubify-web/wasmsrc
 
 go 1.21
 

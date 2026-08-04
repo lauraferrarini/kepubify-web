@@ -8,7 +8,7 @@ Isso é possível porque a biblioteca de conversão do
 [pgaskin/kepubify](https://github.com/pgaskin/kepubify) é compilada para
 **WebAssembly** e roda localmente, no seu próprio dispositivo.
 
-▶ **Demo:** `https://OWNER.github.io/kepubify-web/` (depois de habilitar o
+▶ **Demo:** `https://lauraferrarini.github.io/kepubify-web/` (depois de habilitar o
 GitHub Pages — veja abaixo).
 
 ## Como usar
@@ -63,7 +63,7 @@ cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" ../docs/wasm_exec.js
 
 ## Publicando no GitHub Pages
 
-1. Faça push deste repositório para `github.com/OWNER/kepubify-web`.
+1. Faça push deste repositório para `github.com/lauraferrarini/kepubify-web`.
 2. Em **Settings → Pages**, em "Build and deployment", escolha a fonte
    **GitHub Actions** (o workflow em `.github/workflows/deploy.yml` já cuida
    do resto).
