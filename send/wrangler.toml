@@ -1,0 +1,16 @@
+# Projeto Cloudflare Pages: frontend estático (public/) + Pages Functions
+# (functions/) na mesma URL, servido no subdomínio grátis *.pages.dev.
+#
+# Só depende de um namespace KV (nada de R2 — assim não é preciso ativar
+# nada extra nem cadastrar cartão). Antes do primeiro deploy, crie o
+# namespace e troque o placeholder abaixo:
+#   npx wrangler kv namespace create send2kobo-sessions
+# (veja o README.md desta pasta para o passo a passo completo)
+
+name = "send2kobo"
+pages_build_output_dir = "public"
+compatibility_date = "2024-09-23"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "COLOQUE_AQUI_O_ID_DO_NAMESPACE_KV"
