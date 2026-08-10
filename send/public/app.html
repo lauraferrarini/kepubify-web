@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>send2kobo — envie vários livros pro seu e-reader de uma vez</title>
+<meta name="description" content="Converta e envie vários EPUBs/PDFs de uma vez pro seu Kobo (ou outro e-reader), sem cabo, digitando uma chave curta no navegador do dispositivo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="send.css">
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <span class="eyebrow">envio sem cabo · expira em 5 minutos</span>
+    <h1>send2kobo</h1>
+    <p class="tagline">Solte vários livros aqui, gere uma chave e digite ela no navegador do seu e-reader — todos os arquivos chegam de uma vez.</p>
+  </div>
+</header>
+
+<main>
+
+  <section class="dropzone-section" aria-labelledby="drop-heading">
+    <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-describedby="drop-hint">
+      <svg class="book-icon" viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M8 12c6-4 14-4 20 0v36c-6-4-14-4-20 0V12z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M56 12c-6-4-14-4-20 0v36c6-4 14-4 20 0V12z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+      </svg>
+      <p id="drop-heading" class="drop-title">Arraste arquivos aqui</p>
+      <p id="drop-hint" class="drop-hint">EPUB, PDF, CBZ… pode selecionar vários de uma vez</p>
+      <input id="file-input" type="file" multiple hidden>
+    </div>
+    <p id="wasm-status" class="wasm-status">carregando o conversor de kepub…</p>
+  </section>
+
+  <section class="queue-section" aria-live="polite">
+    <div class="queue-header">
+      <h2>Fila de envio</h2>
+      <div class="queue-actions">
+        <button id="prepare-all" class="btn btn-primary" disabled>Preparar tudo</button>
+        <button id="send-all" class="btn btn-accent" disabled>Gerar chave de envio</button>
+        <button id="clear-all" class="btn btn-ghost" disabled>Limpar</button>
+      </div>
+    </div>
+    <ol id="file-list" class="file-list"></ol>
+    <p id="empty-hint" class="empty-hint">Nenhum arquivo na fila ainda.</p>
+  </section>
+
+  <section id="session-panel" class="session-panel" hidden aria-live="polite">
+    <h2>Chave de envio gerada</h2>
+    <div class="session-key" id="session-key">----</div>
+    <p class="session-hint">
+      No navegador do seu Kobo ou Kindle, abra <strong id="session-host-url">este site</strong> — ele reconhece o
+      dispositivo automaticamente e já mostra a tela pra digitar o código. É só digitar essa chave.
+    </p>
+    <p class="session-countdown">expira em <span id="session-countdown">5:00</span></p>
+    <ul id="session-files" class="session-files"></ul>
+    <button id="delete-session" class="btn btn-ghost">Apagar agora</button>
+  </section>
+
+  <section class="about">
+    <h2>Como funciona</h2>
+    <p>Arquivos <code>.epub</code> marcados para "Kobo" são convertidos pra <code>.kepub.epub</code> no seu próprio navegador (mesmo conversor WebAssembly do <a href="../">kepubify-web</a>) antes de qualquer envio. Depois, os arquivos preparados sobem de uma vez pra um armazenamento temporário, que gera uma chave curta. Quando o Kobo/Kindle abre a raiz do site, ele já reconhece o navegador do dispositivo e mostra direto a tela de digitar o código, sem precisar navegar por menus. Tudo é apagado automaticamente poucos minutos depois, mesmo que você não apague manualmente.</p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>Parte do <a href="https://github.com/lauraferrarini/kepubify-web" target="_blank" rel="noopener">kepubify-web</a>. Conversão baseada em <a href="https://github.com/pgaskin/kepubify" target="_blank" rel="noopener">pgaskin/kepubify</a> (MIT).</p>
+</footer>
+
+<script src="wasm_exec.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

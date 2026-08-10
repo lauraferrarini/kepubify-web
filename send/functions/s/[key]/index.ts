@@ -12,6 +12,7 @@ interface FileMeta {
   kvKey: string;
   size: number;
   type: string;
+  downloaded?: boolean;
 }
 
 interface SessionRecord {
@@ -46,6 +47,9 @@ function page(title: string, body: string): Response {
   a.dl { display:block; padding: 18px 14px; font-size: 1.15em; text-decoration:none; color:#000; }
   a.dl:active { background:#eee; }
   .sz { display:block; color:#555; font-size: 0.7em; margin-top:4px; }
+  li.done { border-color: #999; background: #f0f0f0; }
+  li.done a.dl { color: #666; }
+  .check { color: #2c5f58; font-weight: bold; }
 </style>
 </head>
 <body>${body}</body>
@@ -68,17 +72,20 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const session = JSON.parse(raw) as SessionRecord;
   const secondsLeft = Math.max(0, Math.round((session.expiresAt - Date.now()) / 1000));
 
+  const pending = session.files.filter((f) => !f.downloaded).length;
+
   const items = session.files
-    .map(
-      (f, i) =>
-        `<li><a class="dl" href="/s/${key}/f/${i}">${escapeHtml(f.name)}<span class="sz">${formatSize(f.size)}</span></a></li>`
-    )
+    .map((f, i) => {
+      const liClass = f.downloaded ? ' class="done"' : "";
+      const mark = f.downloaded ? '<span class="check">✓ já baixado — </span>' : "";
+      return `<li${liClass}><a class="dl" href="/s/${key}/f/${i}">${mark}${escapeHtml(f.name)}<span class="sz">${formatSize(f.size)}</span></a></li>`;
+    })
     .join("\n");
 
   return page(
     "Arquivos para baixar",
     `<h1>Arquivos disponíveis</h1>
-     <p class="hint">Toque em cada arquivo para baixar. Este link expira em cerca de ${secondsLeft}s.</p>
+     <p class="hint">Toque em cada arquivo para baixar. Faltam ${pending} de ${session.files.length}. Este link expira em cerca de ${secondsLeft}s.</p>
      <ul>${items}</ul>`
   );
 };

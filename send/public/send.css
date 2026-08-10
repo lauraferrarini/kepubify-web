@@ -48,16 +48,6 @@
   max-width: 32rem;
   margin: 0 auto 1.2rem;
 }
-.qrcode-box {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1rem;
-}
-.qrcode-box img, .qrcode-box canvas {
-  background: #fff;
-  padding: 8px;
-  border-radius: 6px;
-}
 .session-countdown {
   font-family: var(--mono);
   font-size: 0.85rem;

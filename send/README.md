@@ -21,24 +21,38 @@ isso).
 
 ```
 public/            → frontend estático (o que o Pages publica)
-  index.html
+  app.html          → tela de enviar/converter (fica em /app, veja abaixo)
   style.css, send.css
-  app.js            → fila de arquivos, conversão via wasm, upload, chave/QR/contagem
+  app.js            → fila de arquivos, conversão via wasm, upload, chave/contagem
   kepubify.wasm, wasm_exec.js   → copiados de ../docs (conversor do kepubify)
 
 functions/          → Pages Functions (back-end, roda como Worker)
-  api/create-session.ts     → POST: recebe os arquivos, grava no KV, gera a chave
-  api/session/[key].ts      → DELETE: apaga uma sessão antes do prazo
-  s/[key]/index.ts          → GET: página que o e-reader abre (HTML puro, sem JS)
-  s/[key]/f/[idx].ts        → GET: baixa um arquivo específico da sessão
+  index.ts                   → GET /: detecta o navegador do Kobo/Kindle pelo
+                                User-Agent e mostra a tela de código direto;
+                                qualquer outro navegador recebe a tela de envio
+  receber.ts                 → GET /receber: mesma tela de código, sem depender
+                                da detecção (atalho manual/teste)
+  goto.ts                    → GET /goto?k=CODIGO: redireciona pra /s/CODIGO
+  _lib/receivePage.ts         → HTML compartilhado da tela "digite o código"
+  api/create-session.ts      → POST: recebe os arquivos, grava no KV, gera a chave
+  api/session/[key].ts       → DELETE: apaga uma sessão antes do prazo
+  s/[key]/index.ts           → GET: lista os arquivos da sessão (HTML puro, sem JS)
+  s/[key]/f/[idx].ts         → GET: baixa um arquivo específico da sessão
 ```
 
-Fluxo: você arrasta os arquivos → EPUBs marcados "converter pra Kobo" passam
-pelo mesmo `kepubify.wasm`, no seu navegador, exatamente como no
-kepubify-web → ao clicar em "Gerar chave de envio", tudo sobe de uma vez pro
-Workers KV → a Function devolve uma chave de 6 caracteres + QR code → no
-navegador do Kobo, `https://send2kobo.pages.dev/s/CHAVE` lista cada arquivo
-com um link grande pra baixar.
+Fluxo de quem envia: arrasta os arquivos em `https://send2kobo.pages.dev` →
+EPUBs marcados "converter pra Kobo" passam pelo mesmo `kepubify.wasm`, no
+navegador, exatamente como no kepubify-web → ao clicar em "Gerar chave de
+envio", tudo sobe de uma vez pro Workers KV → a Function devolve uma chave de
+4 caracteres.
+
+Fluxo de quem recebe: no navegador do Kobo ou Kindle, basta abrir a raiz do
+site — a Function em `functions/index.ts` reconhece esses dois navegadores
+pelo cabeçalho `User-Agent` (procura por "Kobo" ou "Kindle") e já mostra
+direto a tela de digitar o código, sem precisar navegar por menu nenhum. Sem
+câmera, sem QR code — só o teclado do dispositivo. Se algum firmware não for
+reconhecido (ou pra testar no navegador comum), `https://send2kobo.pages.dev/receber`
+mostra a mesma tela manualmente.
 
 Tanto os metadados da sessão quanto os bytes de cada arquivo ficam gravados
 no **mesmo namespace KV**, cada entrada com `expirationTtl` de 5 minutos — o
@@ -128,13 +142,15 @@ faça o redeploy (`npx wrangler pages deploy public` de novo).
 
 ### 4. Testar
 
-1. Abra `https://send2kobo.pages.dev` no computador.
+1. Abra `https://send2kobo.pages.dev` no computador — cai na tela de enviar.
 2. Arraste um `.epub` de teste, clique em **Preparar tudo** e depois em
    **Gerar chave de envio**.
-3. No navegador do seu Kobo (ou em outro celular/computador, pra testar),
-   acesse `https://send2kobo.pages.dev/s/CHAVE` com a chave que apareceu — ou
-   leia o QR code.
-4. Toque no arquivo listado pra baixar.
+3. No navegador do seu Kobo ou Kindle, abra `https://send2kobo.pages.dev` — a
+   detecção por User-Agent deve mostrar direto a tela de código. Se não
+   mostrar (algum firmware não reconhecido), acesse
+   `https://send2kobo.pages.dev/receber` manualmente.
+4. Digite a chave de 4 caracteres e toque em "Buscar arquivos".
+5. Toque no arquivo listado pra baixar.
 
 ## Rodando localmente antes de publicar
 
@@ -154,7 +170,13 @@ Tudo isso está em `functions/api/create-session.ts`:
 - `MAX_FILE_BYTES` — tamanho máximo por arquivo (hoje 24MB — não passe disso,
   é o limite do Workers KV).
 - `MAX_TOTAL_BYTES` — tamanho total máximo por envio (hoje 100MB).
-- `KEY_LENGTH` — tamanho da chave (hoje 6 caracteres).
+- `KEY_LENGTH` — tamanho da chave (hoje 4 caracteres — curto de propósito,
+  pra digitar fácil no e-reader; o TTL de 5 minutos limita a janela de
+  alguém tentar adivinhar uma chave à toa).
+
+A lista de navegadores reconhecidos como e-reader está em
+`functions/index.ts` (constante `EREADER_UA`, hoje `/kobo|kindle/i`) — se um
+dia você quiser reconhecer outro dispositivo, é só adicionar o termo ali.
 
 ## Licença
 

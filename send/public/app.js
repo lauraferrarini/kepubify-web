@@ -15,7 +15,6 @@ const sessionHostUrlEl = document.getElementById("session-host-url");
 const sessionCountdownEl = document.getElementById("session-countdown");
 const sessionFilesEl = document.getElementById("session-files");
 const deleteSessionBtn = document.getElementById("delete-session");
-const qrcodeBox = document.getElementById("qrcode");
 
 /**
  * @typedef {{
@@ -262,16 +261,9 @@ function showSessionPanel(data, sentItems) {
   currentSessionKey = data.key;
   sessionPanel.hidden = false;
   sessionKeyEl.textContent = data.key;
-
-  const fullUrl = location.origin + data.deviceUrl;
-  sessionHostUrlEl.textContent = location.origin + "/s/";
+  sessionHostUrlEl.textContent = location.origin;
 
   sessionFilesEl.innerHTML = sentItems.map((i) => `<li>${escapeHtml(i.outName)}</li>`).join("");
-
-  qrcodeBox.innerHTML = "";
-  if (window.QRCode) {
-    new QRCode(qrcodeBox, { text: fullUrl, width: 180, height: 180 });
-  }
 
   startCountdown(data.expiresAt);
   sessionPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });

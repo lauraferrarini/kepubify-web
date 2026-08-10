@@ -15,7 +15,11 @@ export interface Env {
 
 // alfabeto sem 0/O, 1/I/L — pra não confundir no teclado do e-reader
 const KEY_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
-const KEY_LENGTH = 6;
+// 4 caracteres = 32^4 ≈ 1 milhão de combinações. É mais fácil de digitar no
+// teclado do e-reader, e o TTL curto (5 min) já limita bastante a janela de
+// alguém tentar adivinhar uma chave à toa — trade-off aceitável pra um uso
+// pessoal como esse.
+const KEY_LENGTH = 4;
 export const TTL_SECONDS = 300; // 5 minutos
 const MAX_FILES = 15;
 const MAX_FILE_BYTES = 24 * 1024 * 1024; // 24MB — limite de valor do Workers KV é 25MB
