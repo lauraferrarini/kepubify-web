@@ -134,7 +134,11 @@ function renderQueue() {
            <input type="checkbox" data-id="${item.id}" class="kobo-toggle" ${item.convertToKobo ? "checked" : ""} ${item.status !== "pending" ? "disabled" : ""}>
            converter pra Kobo
          </label>`
-      : `<span class="device-toggle disabled">sem conversão</span>`;
+      : item.fromEdit
+        ? item.wasConverted
+          ? `<span class="device-toggle disabled convertido">convertido ✓</span>`
+          : `<span class="device-toggle disabled">editado, sem conversão</span>`
+        : `<span class="device-toggle disabled">sem conversão</span>`;
 
     li.innerHTML = `
       <div class="spine" aria-hidden="true"></div>
@@ -142,9 +146,9 @@ function renderQueue() {
         <div class="file-name" title="${escapeHtml(item.file.name)}">${escapeHtml(item.file.name)}</div>
         <div class="file-status ${item.status === "error" ? "error" : item.status === "ready" ? "done" : ""}">${escapeHtml(statusText)}</div>
       </div>
-      ${toggleHtml}
       <div class="page-flip" aria-hidden="true"></div>
-      <span class="file-download">${item.status === "ready" ? (item.outName || item.file.name) : ""}</span>
+      <span class="file-download" title="${escapeHtml(item.status === "ready" ? (item.outName || item.file.name) : "")}">${escapeHtml(item.status === "ready" ? (item.outName || item.file.name) : "")}</span>
+      ${toggleHtml}
     `;
     fileList.appendChild(li);
   }

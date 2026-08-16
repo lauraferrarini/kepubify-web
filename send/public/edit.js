@@ -252,12 +252,14 @@ async function applyEditsAndBuild(item) {
     return {
       name: baseOutName + ".kepub.epub",
       blob: new Blob([outBytes], { type: "application/epub+zip" }),
+      converted: true,
     };
   }
 
   return {
     name: baseOutName + ".epub",
     blob: new Blob([editedBytes], { type: "application/epub+zip" }),
+    converted: false,
   };
 }
 
@@ -330,6 +332,8 @@ editSendDeviceBtn.addEventListener("click", async () => {
         status: "ready",
         outBlob: out.blob,
         outName: out.name,
+        fromEdit: true,
+        wasConverted: out.converted,
       });
     }
     renderQueue();

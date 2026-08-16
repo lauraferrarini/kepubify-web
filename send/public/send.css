@@ -16,6 +16,32 @@
   grid-template-columns: auto 1fr auto auto auto;
 }
 
+.file-meta { min-width: 0; }
+
+.file-download {
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.device-toggle {
+  justify-self: end;
+  text-align: right;
+}
+.device-toggle.convertido { color: var(--teal-deep); }
+
+/* app.js (send tab) uses "preparing"/"ready" instead of kepubify-web's
+   "converting"/"done" — mirror the same visual states here. */
+.file-row[data-status="preparing"] .spine::after { height: 55%; animation: spine-pulse 1.1s ease-in-out infinite; }
+.file-row[data-status="ready"] .spine::after { height: 100%; background: var(--teal-deep); animation: none; }
+.file-row[data-status="preparing"] .page-flip {
+  visibility: visible;
+  animation: flip 0.9s linear infinite;
+  transform-style: preserve-3d;
+  transform-origin: left center;
+}
+.file-row[data-status="ready"] .file-download { visibility: visible; }
+
 .session-panel {
   margin-top: 2.5rem;
   padding: 1.6rem;
