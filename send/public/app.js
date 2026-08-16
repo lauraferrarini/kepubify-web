@@ -137,8 +137,10 @@ function renderQueue() {
       : item.fromEdit
         ? item.wasConverted
           ? `<span class="device-toggle disabled convertido">convertido ✓</span>`
-          : `<span class="device-toggle disabled">editado, sem conversão</span>`
+          : ``
         : `<span class="device-toggle disabled">sem conversão</span>`;
+
+    const outNameDiffers = item.status === "ready" && item.outName && item.outName !== item.file.name;
 
     li.innerHTML = `
       <div class="spine" aria-hidden="true"></div>
@@ -147,7 +149,7 @@ function renderQueue() {
         <div class="file-status ${item.status === "error" ? "error" : item.status === "ready" ? "done" : ""}">${escapeHtml(statusText)}</div>
       </div>
       <div class="page-flip" aria-hidden="true"></div>
-      <span class="file-download" title="${escapeHtml(item.status === "ready" ? (item.outName || item.file.name) : "")}">${escapeHtml(item.status === "ready" ? (item.outName || item.file.name) : "")}</span>
+      <span class="file-download" title="${outNameDiffers ? escapeHtml(item.outName) : ""}">${outNameDiffers ? escapeHtml(item.outName) : ""}</span>
       ${toggleHtml}
     `;
     fileList.appendChild(li);
