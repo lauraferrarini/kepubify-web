@@ -136,8 +136,8 @@ function renderQueue() {
            converter pra Kobo
          </label>`
       : item.fromEdit
-        ? (item.wasConverted ? `<span class="device-toggle disabled convertido">convertido ✓</span>` : ``)
-        : ``;
+        ? (item.wasConverted ? `<span class="device-toggle disabled convertido">convertido ✓</span>` : `<span class="device-toggle disabled">sem conversão</span>`)
+        : `<span class="device-toggle disabled">sem conversão</span>`;
 
     const outNameDiffers = item.status === "ready" && item.outName && item.outName !== item.file.name;
     const downloadHtml = outNameDiffers
@@ -261,7 +261,7 @@ downloadAllBtn.addEventListener("click", async () => {
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
   } finally {
-    downloadAllBtn.textContent = "Baixar tudo";
+    downloadAllBtn.textContent = "Baixar";
     updateButtons();
   }
 });
