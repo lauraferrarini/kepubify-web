@@ -24,6 +24,40 @@
 
 <main>
 
+  <nav class="tabs" role="tablist" aria-label="Modo">
+    <button class="tab-btn" id="tab-btn-edit" role="tab" aria-selected="false" aria-controls="tab-edit">Editar</button>
+    <button class="tab-btn active" id="tab-btn-send" role="tab" aria-selected="true" aria-controls="tab-send">Converter/enviar</button>
+  </nav>
+
+  <section id="tab-edit" class="tab-panel" hidden role="tabpanel" aria-labelledby="tab-btn-edit">
+
+    <section class="dropzone-section" aria-labelledby="edit-drop-heading">
+      <div id="edit-dropzone" class="dropzone" tabindex="0" role="button" aria-describedby="edit-drop-hint">
+        <svg class="book-icon" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M8 12c6-4 14-4 20 0v36c-6-4-14-4-20 0V12z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+          <path d="M56 12c-6-4-14-4-20 0v36c6-4 14-4 20 0V12z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+        </svg>
+        <p id="edit-drop-heading" class="drop-title">Arraste .epub aqui pra editar</p>
+        <p id="edit-drop-hint" class="drop-hint">título, autor(a) e capa — depois baixe ou envie pro dispositivo</p>
+        <input id="edit-file-input" type="file" multiple hidden>
+      </div>
+    </section>
+
+    <div class="queue-header">
+      <h2>Metadados</h2>
+      <div class="queue-actions">
+        <button id="edit-download-all" class="btn btn-primary" disabled>Baixar arquivos</button>
+        <button id="edit-send-device" class="btn btn-accent" disabled>Enviar para dispositivo</button>
+      </div>
+    </div>
+
+    <ol id="edit-meta-list" class="meta-list"></ol>
+    <p id="edit-empty-hint" class="empty-hint">Nenhum livro carregado ainda.</p>
+
+  </section><!-- /tab-edit -->
+
+  <section id="tab-send" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-send">
+
   <section class="dropzone-section" aria-labelledby="drop-heading">
     <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-describedby="drop-hint">
       <svg class="book-icon" viewBox="0 0 64 64" aria-hidden="true">
@@ -67,6 +101,8 @@
     <p>Arquivos <code>.epub</code> marcados para "Kobo" são convertidos pra <code>.kepub.epub</code> no seu próprio navegador (mesmo conversor WebAssembly do <a href="../">kepubify-web</a>) antes de qualquer envio. Depois, os arquivos preparados sobem de uma vez pra um armazenamento temporário, que gera uma chave curta. Quando o Kobo/Kindle abre a raiz do site, ele já reconhece o navegador do dispositivo e mostra direto a tela de digitar o código, sem precisar navegar por menus. Tudo é apagado automaticamente poucos minutos depois, mesmo que você não apague manualmente.</p>
   </section>
 
+  </section><!-- /tab-send -->
+
 </main>
 
 <footer class="site-footer">
@@ -74,6 +110,9 @@
 </footer>
 
 <script src="wasm_exec.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="app.js"></script>
+<script src="edit.js"></script>
+<script src="tabs.js"></script>
 </body>
 </html>
