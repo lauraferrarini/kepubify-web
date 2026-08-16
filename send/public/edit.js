@@ -55,9 +55,9 @@ function addEditFiles(fileListLike) {
     metaQueue.push({ id: metaNextId++, file, status: "loading", convertToKobo: true });
   }
   if (all.length && !files.length) {
-    editEmptyHint.textContent = `${all.length} arquivo(s) selecionado(s), mas nenhum termina em ".epub" — nome recebido: ${all.map((f) => f.name).join(", ")}`;
+    editEmptyHint.textContent = t("edit.mismatchPrefix", { count: all.length, names: all.map((f) => f.name).join(", ") });
   } else {
-    editEmptyHint.textContent = "Nenhum livro carregado ainda.";
+    editEmptyHint.textContent = t("edit.emptyHint");
   }
   renderMetaList();
   for (const item of metaQueue.filter((q) => q.status === "loading")) {
@@ -102,7 +102,7 @@ async function loadMetadata(item) {
   } catch (err) {
     console.error(err);
     item.status = "error";
-    item.error = "não consegui ler este epub: " + (err.message || err);
+    item.error = t("edit.readErrorPrefix") + (err.message || err);
   }
   renderMetaList();
   updateEditButtons();
@@ -146,7 +146,7 @@ function renderMetaList() {
     li.dataset.id = String(item.id);
 
     if (item.status === "loading") {
-      li.innerHTML = `<div class="meta-card-head"><span class="file-name">${escapeHtml(item.file.name)}</span><span class="file-status">lendo…</span></div>`;
+      li.innerHTML = `<div class="meta-card-head"><span class="file-name">${escapeHtml(item.file.name)}</span><span class="file-status">${t("edit.reading")}</span></div>`;
     } else if (item.status === "error") {
       li.innerHTML = `<div class="meta-card-head"><span class="file-name">${escapeHtml(item.file.name)}</span><span class="file-status error">${escapeHtml(item.error)}</span></div>`;
     } else {
@@ -156,24 +156,24 @@ function renderMetaList() {
           <span class="file-name">${escapeHtml(item.file.name)}</span>
           <label class="device-toggle">
             <input type="checkbox" class="kobo-toggle-edit" ${item.convertToKobo ? "checked" : ""}>
-            converter pra Kobo
+            ${t("badge.convertToKobo")}
           </label>
         </div>
         <div class="meta-card-body">
           <div class="cover-preview">
-            ${p.newCoverUrl || p.coverUrl ? `<img src="${p.newCoverUrl || p.coverUrl}" alt="Capa de ${escapeHtml(p.title)}">` : `<div class="cover-placeholder">sem capa</div>`}
+            ${p.newCoverUrl || p.coverUrl ? `<img src="${p.newCoverUrl || p.coverUrl}" alt="${escapeHtml(t("edit.coverAltPrefix") + p.title)}">` : `<div class="cover-placeholder">${t("edit.coverPlaceholder")}</div>`}
             <label class="btn btn-ghost btn-small">
-              Trocar capa
+              ${t("edit.changeCover")}
               <input type="file" accept="image/*" class="cover-input" hidden>
             </label>
           </div>
           <div class="meta-fields">
             <label class="field">
-              <span>Título</span>
+              <span>${t("edit.fieldTitle")}</span>
               <input type="text" class="title-input" value="${escapeHtml(p.editedTitle ?? p.title)}">
             </label>
             <label class="field">
-              <span>Autor(a)</span>
+              <span>${t("edit.fieldAuthor")}</span>
               <input type="text" class="author-input" value="${escapeHtml(p.editedAuthor ?? p.author)}">
             </label>
           </div>
@@ -191,7 +191,7 @@ function renderMetaList() {
         p.newCoverFile = file;
         p.newCoverUrl = URL.createObjectURL(file);
         li.querySelector(".cover-preview img, .cover-preview .cover-placeholder")?.replaceWith(
-          Object.assign(document.createElement("img"), { src: p.newCoverUrl, alt: "Nova capa" })
+          Object.assign(document.createElement("img"), { src: p.newCoverUrl, alt: t("edit.newCoverAlt") })
         );
       });
 
@@ -243,7 +243,7 @@ async function applyEditsAndBuild(item) {
   const baseOutName = item.file.name.replace(/\.epub$/i, "");
 
   if (item.convertToKobo) {
-    if (!wasmReady) throw new Error("conversor ainda não carregou");
+    if (!wasmReady) throw new Error("converter not loaded yet");
     await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
     const result = window.kepubifyConvert(editedBytes);
     if (!result.ok) throw new Error(result.error);
@@ -272,7 +272,7 @@ async function buildAllOutputs() {
     } catch (err) {
       console.error(err);
       item.status = "error";
-      item.error = "falha ao processar: " + (err.message || err);
+      item.error = t("edit.processErrorPrefix") + (err.message || err);
     }
   }
   renderMetaList();
@@ -283,7 +283,7 @@ async function buildAllOutputs() {
 
 editDownloadAllBtn.addEventListener("click", async () => {
   editDownloadAllBtn.disabled = true;
-  editDownloadAllBtn.textContent = "processando…";
+  editDownloadAllBtn.textContent = t("edit.downloadAll.processing");
   try {
     const outputs = await buildAllOutputs();
     if (!outputs.length) return;
@@ -304,21 +304,21 @@ editDownloadAllBtn.addEventListener("click", async () => {
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "livros-editados.zip";
+      a.download = t("edit.zipName");
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
   } finally {
-    editDownloadAllBtn.textContent = "Baixar arquivos";
+    editDownloadAllBtn.textContent = t("edit.downloadAll");
     updateEditButtons();
   }
 });
 
 editSendDeviceBtn.addEventListener("click", async () => {
   editSendDeviceBtn.disabled = true;
-  editSendDeviceBtn.textContent = "preparando…";
+  editSendDeviceBtn.textContent = t("edit.sendDevice.preparing");
   try {
     const outputs = await buildAllOutputs();
     if (!outputs.length) return;
@@ -340,7 +340,7 @@ editSendDeviceBtn.addEventListener("click", async () => {
     window.activateSendTab();
     document.getElementById("send-all")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } finally {
-    editSendDeviceBtn.textContent = "Enviar para dispositivo";
+    editSendDeviceBtn.textContent = t("edit.sendDevice");
     updateEditButtons();
   }
 });

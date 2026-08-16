@@ -1,5 +1,29 @@
 /* Extras específicos do send2kobo, além do style.css herdado do kepubify-web */
 
+.lang-switch {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.6rem 1rem 0;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+}
+.lang-switch span { color: var(--line); }
+.lang-btn {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 0.2em 0.3em;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+}
+.lang-btn:hover { color: var(--ink); }
+.lang-btn.active { color: var(--teal-deep); font-weight: 600; text-decoration: underline; }
+
 .device-toggle {
   display: flex;
   align-items: center;
@@ -13,7 +37,7 @@
 .device-toggle.disabled { opacity: 0.4; }
 
 .file-row {
-  grid-template-columns: auto 1fr auto auto auto auto;
+  grid-template-columns: auto 1fr auto auto auto;
 }
 
 .row-remove {

@@ -40,6 +40,24 @@ let countdownTimer = null;
 
 // ---- WASM bootstrap (conversão EPUB -> KEPUB, local, igual ao kepubify-web) ----
 
+let wasmState = "loading"; // "loading" | "ready" | "failed"
+let wasmErrorMsg = "";
+
+function refreshWasmStatus() {
+  if (wasmState === "ready") {
+    wasmStatus.textContent = t("send.wasmReady");
+    wasmStatus.classList.remove("failed");
+    wasmStatus.classList.add("ready");
+  } else if (wasmState === "failed") {
+    wasmStatus.textContent = t("send.wasmFailedPrefix") + wasmErrorMsg + t("send.wasmFailedSuffix");
+    wasmStatus.classList.remove("ready");
+    wasmStatus.classList.add("failed");
+  } else {
+    wasmStatus.textContent = t("send.wasmLoading");
+    wasmStatus.classList.remove("ready", "failed");
+  }
+}
+
 async function loadWasm() {
   try {
     const go = new Go();
@@ -49,13 +67,14 @@ async function loadWasm() {
     go.run(instance);
     await waitFor(() => window.kepubifyReady === true, 5000);
     wasmReady = true;
-    wasmStatus.textContent = "conversor pronto — a conversão pra Kobo roda localmente, no seu navegador";
-    wasmStatus.classList.add("ready");
+    wasmState = "ready";
+    refreshWasmStatus();
     updateButtons();
   } catch (err) {
     console.error(err);
-    wasmStatus.textContent = "conversor indisponível (" + err.message + ") — arquivos .epub serão enviados sem converter";
-    wasmStatus.classList.add("failed");
+    wasmState = "failed";
+    wasmErrorMsg = err.message;
+    refreshWasmStatus();
   }
 }
 
@@ -124,25 +143,26 @@ function renderQueue() {
     li.dataset.id = String(item.id);
 
     const statusText = {
-      pending: "na fila",
-      preparing: "preparando…",
-      ready: "pronto pra enviar",
-      error: item.error || "erro",
+      pending: t("status.pending"),
+      preparing: t("status.preparing"),
+      ready: t("status.ready"),
+      error: item.error || t("status.error"),
     }[item.status];
 
-    const toggleHtml = item.isEpub
-      ? `<label class="device-toggle ${item.status !== "pending" ? "disabled" : ""}">
+    let toggleHtml;
+    if (item.status === "ready") {
+      const converted = item.fromEdit ? !!item.wasConverted : (item.isEpub && item.convertToKobo);
+      toggleHtml = converted
+        ? `<span class="device-toggle disabled convertido">${t("badge.converted")}</span>`
+        : `<span class="device-toggle disabled">${t("badge.notConverted")}</span>`;
+    } else if (item.isEpub) {
+      toggleHtml = `<label class="device-toggle ${item.status !== "pending" ? "disabled" : ""}">
            <input type="checkbox" data-id="${item.id}" class="kobo-toggle" ${item.convertToKobo ? "checked" : ""} ${item.status !== "pending" ? "disabled" : ""}>
-           converter pra Kobo
-         </label>`
-      : item.fromEdit
-        ? (item.wasConverted ? `<span class="device-toggle disabled convertido">convertido ✓</span>` : `<span class="device-toggle disabled">sem conversão</span>`)
-        : `<span class="device-toggle disabled">sem conversão</span>`;
-
-    const outNameDiffers = item.status === "ready" && item.outName && item.outName !== item.file.name;
-    const downloadHtml = outNameDiffers
-      ? `<span class="file-download" title="${escapeHtml(item.outName)}">${escapeHtml(item.outName)}</span>`
-      : "";
+           ${t("badge.convertToKobo")}
+         </label>`;
+    } else {
+      toggleHtml = `<span class="device-toggle disabled">${t("badge.noConversion")}</span>`;
+    }
 
     li.innerHTML = `
       <div class="spine" aria-hidden="true"></div>
@@ -151,9 +171,8 @@ function renderQueue() {
         <div class="file-status ${item.status === "error" ? "error" : item.status === "ready" ? "done" : ""}">${escapeHtml(statusText)}</div>
       </div>
       <div class="page-flip" aria-hidden="true"></div>
-      ${downloadHtml}
       ${toggleHtml}
-      <button type="button" class="row-remove" data-id="${item.id}" aria-label="Remover ${escapeHtml(item.file.name)} da fila" title="Remover da fila">×</button>
+      <button type="button" class="row-remove" data-id="${item.id}" aria-label="${escapeHtml(t("send.rowRemoveAria", { name: item.file.name }))}" title="${escapeHtml(t("send.rowRemoveTitle"))}">×</button>
     `;
     fileList.appendChild(li);
   }
@@ -205,7 +224,7 @@ async function prepareOne(item) {
 
   try {
     if (item.isEpub && item.convertToKobo) {
-      if (!wasmReady) throw new Error("conversor ainda não carregou");
+      if (!wasmReady) throw new Error("converter not loaded yet");
       const buf = new Uint8Array(await item.file.arrayBuffer());
       const result = window.kepubifyConvert(buf);
       if (!result.ok) throw new Error(result.error);
@@ -247,7 +266,7 @@ downloadAllBtn.addEventListener("click", async () => {
   if (!ready.length) return;
 
   downloadAllBtn.disabled = true;
-  downloadAllBtn.textContent = "compactando…";
+  downloadAllBtn.textContent = t("send.downloadZipping");
   try {
     if (ready.length === 1) {
       const item = ready[0];
@@ -266,14 +285,14 @@ downloadAllBtn.addEventListener("click", async () => {
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "livros.zip";
+      a.download = t("send.zipName");
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
   } finally {
-    downloadAllBtn.textContent = "Baixar";
+    downloadAllBtn.textContent = t("send.download");
     updateButtons();
   }
 });
@@ -294,7 +313,7 @@ sendAllBtn.addEventListener("click", async () => {
   if (!ready.length) return;
 
   sendAllBtn.disabled = true;
-  sendAllBtn.textContent = "enviando…";
+  sendAllBtn.textContent = t("send.sending");
   try {
     const form = new FormData();
     for (const item of ready) {
@@ -306,11 +325,11 @@ sendAllBtn.addEventListener("click", async () => {
     showSessionPanel(data, ready);
   } catch (err) {
     console.error(err);
-    wasmStatus.textContent = "falha ao enviar: " + (err.message || String(err));
+    wasmStatus.textContent = t("send.sendErrorPrefix") + (err.message || String(err));
     wasmStatus.classList.add("failed");
   } finally {
     sendAllBtn.disabled = false;
-    sendAllBtn.textContent = "Gerar chave de envio";
+    sendAllBtn.textContent = t("send.generateKey");
   }
 });
 
@@ -341,7 +360,7 @@ function startCountdown(expiresAt) {
     sessionCountdownEl.textContent = `${m}:${String(s).padStart(2, "0")}`;
     if (secondsLeft <= 0) {
       clearInterval(countdownTimer);
-      sessionCountdownEl.textContent = "expirado";
+      sessionCountdownEl.textContent = t("session.expired");
     }
   }
   tick();
