@@ -13,8 +13,20 @@
 .device-toggle.disabled { opacity: 0.4; }
 
 .file-row {
-  grid-template-columns: auto 1fr auto auto auto;
+  grid-template-columns: auto 1fr auto auto auto auto;
 }
+
+.row-remove {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+}
+.row-remove:hover { color: var(--error); background: var(--paper); }
 
 .file-meta { min-width: 0; }
 
@@ -91,8 +103,9 @@
 
 @media (max-width: 30rem) {
   .file-row {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto 1fr auto;
     grid-template-rows: auto auto auto;
   }
   .device-toggle, .file-download { grid-column: 2; justify-self: start; }
+  .row-remove { grid-row: 1; grid-column: 3; }
 }

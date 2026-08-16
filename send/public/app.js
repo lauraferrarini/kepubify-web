@@ -153,6 +153,7 @@ function renderQueue() {
       <div class="page-flip" aria-hidden="true"></div>
       ${downloadHtml}
       ${toggleHtml}
+      <button type="button" class="row-remove" data-id="${item.id}" aria-label="Remover ${escapeHtml(item.file.name)} da fila" title="Remover da fila">×</button>
     `;
     fileList.appendChild(li);
   }
@@ -162,6 +163,17 @@ function renderQueue() {
       const id = Number(e.target.dataset.id);
       const item = queue.find((q) => q.id === id);
       if (item) item.convertToKobo = e.target.checked;
+    });
+  });
+
+  fileList.querySelectorAll(".row-remove").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      const id = Number(e.currentTarget.dataset.id);
+      const idx = queue.findIndex((q) => q.id === id);
+      if (idx === -1) return;
+      if (queue[idx]._url) URL.revokeObjectURL(queue[idx]._url);
+      queue.splice(idx, 1);
+      renderQueue();
     });
   });
 
