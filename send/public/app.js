@@ -5,6 +5,7 @@ const fileInput = document.getElementById("file-input");
 const fileList = document.getElementById("file-list");
 const queueSection = document.querySelector(".queue-section");
 const prepareAllBtn = document.getElementById("prepare-all");
+const downloadAllBtn = document.getElementById("download-all");
 const sendAllBtn = document.getElementById("send-all");
 const clearAllBtn = document.getElementById("clear-all");
 const wasmStatus = document.getElementById("wasm-status");
@@ -135,10 +136,8 @@ function renderQueue() {
            converter pra Kobo
          </label>`
       : item.fromEdit
-        ? item.wasConverted
-          ? `<span class="device-toggle disabled convertido">convertido ✓</span>`
-          : ``
-        : `<span class="device-toggle disabled">sem conversão</span>`;
+        ? (item.wasConverted ? `<span class="device-toggle disabled convertido">convertido ✓</span>` : ``)
+        : ``;
 
     const outNameDiffers = item.status === "ready" && item.outName && item.outName !== item.file.name;
     const downloadHtml = outNameDiffers
@@ -179,6 +178,7 @@ function updateButtons() {
   const hasPending = queue.some((q) => q.status === "pending" || q.status === "error");
   const hasReady = queue.some((q) => q.status === "ready");
   prepareAllBtn.disabled = !hasPending;
+  downloadAllBtn.disabled = !hasReady;
   sendAllBtn.disabled = !hasReady;
   clearAllBtn.disabled = queue.length === 0;
 }
@@ -228,6 +228,42 @@ prepareAllBtn.addEventListener("click", async () => {
     await prepareOne(item);
   }
   updateButtons();
+});
+
+downloadAllBtn.addEventListener("click", async () => {
+  const ready = queue.filter((q) => q.status === "ready" && q.outBlob);
+  if (!ready.length) return;
+
+  downloadAllBtn.disabled = true;
+  downloadAllBtn.textContent = "compactando…";
+  try {
+    if (ready.length === 1) {
+      const item = ready[0];
+      const url = URL.createObjectURL(item.outBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = item.outName || item.file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } else {
+      const zip = new JSZip();
+      for (const item of ready) zip.file(item.outName || item.file.name, item.outBlob);
+      const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "livros.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }
+  } finally {
+    downloadAllBtn.textContent = "Baixar tudo";
+    updateButtons();
+  }
 });
 
 clearAllBtn.addEventListener("click", () => {
