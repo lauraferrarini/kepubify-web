@@ -350,6 +350,17 @@ main {
   border: 1px solid var(--line);
   background: var(--paper);
 }
+.enhance-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+  user-select: none;
+}
+.enhance-toggle input { accent-color: var(--teal); }
+
 .cover-placeholder {
   width: 9rem;
   height: 12.5rem;

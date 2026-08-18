@@ -7,6 +7,12 @@
 const OPF_NS = "http://www.idpf.org/2007/opf";
 const DC_NS = "http://purl.org/dc/elements/1.1/";
 
+// Default strength for cover enhancement. Tuned for Kaleido 3 panels (Kobo
+// Clara/Libra Colour), where the colour filter array eats saturation and
+// compresses the tonal range. Covers render small, so crushed shadow detail
+// costs little — hence a heavier hand here than would suit full-page art.
+const COVER_PRESET = { saturation: 1.45, contrast: 0.3, sharpen: 0.2 };
+
 const editDropzone = document.getElementById("edit-dropzone");
 const editFileInput = document.getElementById("edit-file-input");
 const editMetaList = document.getElementById("edit-meta-list");
@@ -65,6 +71,143 @@ function addEditFiles(fileListLike) {
   }
 }
 
+// ---- cover enhancement ---------------------------------------------------
+
+/**
+ * Boosts saturation and contrast, then sharpens luminance only.
+ *
+ * Pure function over pixel data — no DOM, no canvas — so it can be unit
+ * tested in Node and reused elsewhere.
+ *
+ * Sharpening the luma channel alone (leaving chroma untouched) matches how
+ * Kaleido panels work: monochrome resolves at 300 PPI, colour at 150. Sharp
+ * edges land on the channel that can actually show them, with no colour
+ * fringing.
+ *
+ * @param {ImageData} src
+ * @param {{saturation?:number, contrast?:number, sharpen?:number}} opts
+ * @returns {ImageData}
+ */
+function enhance(src, opts) {
+  const o = opts || {};
+  const sat = o.saturation != null ? o.saturation : COVER_PRESET.saturation;
+  const con = o.contrast != null ? o.contrast : COVER_PRESET.contrast;
+  const sharp = o.sharpen != null ? o.sharpen : COVER_PRESET.sharpen;
+
+  const w = src.width;
+  const h = src.height;
+  const n = w * h;
+  const d = new Uint8ClampedArray(src.data);
+
+  // Pass 1 — saturate around luma, then an S-curve that steepens midtones
+  // while leaving both endpoints fixed (so nothing clips to black or white).
+  const luma = new Float32Array(n);
+  for (let p = 0, i = 0; p < n; p++, i += 4) {
+    const L = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+
+    for (let c = 0; c < 3; c++) {
+      let v = L + (d[i + c] - L) * sat;
+      const t = v / 255 - 0.5;
+      d[i + c] = (0.5 + t * (1 + con * (1 - 4 * t * t))) * 255;
+    }
+
+    luma[p] = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+  }
+
+  // Pass 2 — unsharp mask on luma, applied back as a per-pixel gain so hue
+  // and saturation survive untouched.
+  if (sharp > 0) {
+    const blur = new Float32Array(n);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let sum = 0;
+        let count = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) continue;
+            sum += luma[yy * w + xx];
+            count++;
+          }
+        }
+        blur[y * w + x] = sum / count;
+      }
+    }
+    for (let p = 0, i = 0; p < n; p++, i += 4) {
+      const L = luma[p];
+      if (L < 1) continue;
+
+      let gain = (L + sharp * (L - blur[p])) / L;
+
+      // Cap the gain at whatever the brightest channel can absorb. Without
+      // this, a bright saturated pixel clips its strongest channel at 255
+      // while the others keep climbing, which shifts the hue — the sharpener
+      // would quietly recolour the image.
+      const peak = Math.max(d[i], d[i + 1], d[i + 2]);
+      if (peak > 0 && gain * peak > 255) gain = 255 / peak;
+
+      d[i] *= gain;
+      d[i + 1] *= gain;
+      d[i + 2] *= gain;
+    }
+  }
+
+  return new ImageData(d, w, h);
+}
+
+/** True if any pixel is not fully opaque. */
+function hasTransparency(imageData) {
+  const d = imageData.data;
+  for (let i = 3; i < d.length; i += 4) {
+    if (d[i] < 255) return true;
+  }
+  return false;
+}
+
+/**
+ * Runs an image blob through `enhance` and re-encodes it.
+ *
+ * Transparent images stay PNG — flattening them to JPEG would paint the
+ * transparent areas black. Everything else becomes JPEG, which keeps the
+ * file from ballooning after the re-encode.
+ *
+ * @param {Blob} blob
+ * @param {object} [opts]
+ * @returns {Promise<Blob>}
+ */
+async function enhanceCover(blob, opts) {
+  const bitmap = await createImageBitmap(blob);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+
+  const src = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const keepPng = hasTransparency(src);
+  ctx.putImageData(enhance(src, opts), 0, 0);
+
+  const out = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error("canvas.toBlob returned null"))),
+      keepPng ? "image/png" : "image/jpeg",
+      keepPng ? undefined : 0.9
+    );
+  });
+
+  canvas.width = canvas.height = 0; // release the backing store early
+  return out;
+}
+
+/** The cover a book will ship with, before enhancement: replacement or original. */
+function sourceCoverBlob(p) {
+  return p.newCoverFile || p.coverBlob || null;
+}
+
 // ---- EPUB parsing -------------------------------------------------------
 
 async function loadMetadata(item) {
@@ -88,13 +231,15 @@ async function loadMetadata(item) {
     const coverFile = coverPath ? zip.file(coverPath) : null;
 
     let coverUrl = null;
+    let coverBlob = null;
     if (coverFile) {
-      const blob = await coverFile.async("blob");
-      coverUrl = URL.createObjectURL(blob);
+      coverBlob = await coverFile.async("blob");
+      coverUrl = URL.createObjectURL(coverBlob);
     }
 
     item.parsed = {
-      zip, opfPath, opfDir, opfDoc, titleEl, creatorEls, coverPath, coverUrl,
+      zip, opfPath, opfDir, opfDoc, titleEl, creatorEls, coverPath, coverUrl, coverBlob,
+      enhanceCover: false,
       title: titleEl ? titleEl.textContent : "",
       author: creatorEls.map((e) => e.textContent).join(", "),
     };
@@ -166,6 +311,10 @@ function renderMetaList() {
               ${t("edit.changeCover")}
               <input type="file" accept="image/*" class="cover-input" hidden>
             </label>
+            <label class="enhance-toggle" title="${escapeHtml(t("edit.enhanceCoverHint"))}">
+              <input type="checkbox" class="enhance-input" ${p.enhanceCover ? "checked" : ""}>
+              ${t("edit.enhanceCover")}
+            </label>
           </div>
           <div class="meta-fields">
             <label class="field">
@@ -184,15 +333,50 @@ function renderMetaList() {
         item.convertToKobo = e.target.checked;
       });
 
+      const refreshCoverPreview = async () => {
+        const source = sourceCoverBlob(p);
+        if (!source) return;
+
+        if (p.previewUrl) {
+          URL.revokeObjectURL(p.previewUrl);
+          p.previewUrl = null;
+        }
+
+        let shown;
+        if (p.enhanceCover) {
+          try {
+            shown = await enhanceCover(source, COVER_PRESET);
+          } catch (err) {
+            console.error(err);
+            shown = source; // fall back to the untouched cover
+          }
+        } else {
+          shown = source;
+        }
+
+        p.previewUrl = URL.createObjectURL(shown);
+        const current = li.querySelector(".cover-preview img, .cover-preview .cover-placeholder");
+        if (current) {
+          current.replaceWith(
+            Object.assign(document.createElement("img"), {
+              src: p.previewUrl,
+              alt: t("edit.newCoverAlt"),
+            })
+          );
+        }
+      };
+
       const coverInput = li.querySelector(".cover-input");
       coverInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
         if (!file) return;
         p.newCoverFile = file;
-        p.newCoverUrl = URL.createObjectURL(file);
-        li.querySelector(".cover-preview img, .cover-preview .cover-placeholder")?.replaceWith(
-          Object.assign(document.createElement("img"), { src: p.newCoverUrl, alt: t("edit.newCoverAlt") })
-        );
+        refreshCoverPreview();
+      });
+
+      li.querySelector(".enhance-input").addEventListener("change", (e) => {
+        p.enhanceCover = e.target.checked;
+        refreshCoverPreview();
       });
 
       li.querySelector(".title-input").addEventListener("input", (e) => (p.editedTitle = e.target.value));
@@ -228,13 +412,21 @@ async function applyEditsAndBuild(item) {
   }
   p.zip.file(p.opfPath, new XMLSerializer().serializeToString(p.opfDoc));
 
-  if (p.newCoverFile && p.coverPath) {
-    const bytes = new Uint8Array(await p.newCoverFile.arrayBuffer());
-    p.zip.file(p.coverPath, bytes);
+  // Rewrite the cover when it was replaced, enhanced, or both. With
+  // enhancement on and no replacement picked, the book's own cover is the
+  // source — so the option works on every book, not only re-covered ones.
+  const coverSource = sourceCoverBlob(p);
+  if (p.coverPath && coverSource && (p.newCoverFile || p.enhanceCover)) {
+    const finalBlob = p.enhanceCover ? await enhanceCover(coverSource, COVER_PRESET) : coverSource;
+    p.zip.file(p.coverPath, new Uint8Array(await finalBlob.arrayBuffer()));
+
     const items = Array.from(p.opfDoc.getElementsByTagNameNS(OPF_NS, "item"));
     const coverItem = items.find((it) => resolvePath(p.opfDir, it.getAttribute("href")) === p.coverPath);
     if (coverItem) {
-      coverItem.setAttribute("media-type", p.newCoverFile.type || coverItem.getAttribute("media-type"));
+      // Must track the actual encoding: enhancement re-encodes to JPEG (or
+      // PNG when the source had transparency), and a stale media-type breaks
+      // the cover in strict readers.
+      coverItem.setAttribute("media-type", finalBlob.type || coverItem.getAttribute("media-type"));
       p.zip.file(p.opfPath, new XMLSerializer().serializeToString(p.opfDoc));
     }
   }
