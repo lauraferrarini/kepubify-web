@@ -279,6 +279,16 @@ function resolvePath(baseDir, href) {
   return stack.join("/");
 }
 
+function uniqueManifestId(opfDoc, base) {
+  const existing = new Set(
+    Array.from(opfDoc.getElementsByTagNameNS(OPF_NS, "item")).map((it) => it.getAttribute("id"))
+  );
+  if (!existing.has(base)) return base;
+  let i = 2;
+  while (existing.has(`${base}-${i}`)) i++;
+  return `${base}-${i}`;
+}
+
 // ---- rendering ----------------------------------------------------------
 
 function renderMetaList() {
@@ -409,6 +419,9 @@ async function applyEditsAndBuild(item) {
     const newCreator = p.opfDoc.createElementNS(DC_NS, "dc:creator");
     newCreator.textContent = newAuthor.trim();
     metadataEl.appendChild(newCreator);
+    p.creatorEls = [newCreator]; // so a second build() removes this one, not a stale reference
+  } else {
+    p.creatorEls = [];
   }
   p.zip.file(p.opfPath, new XMLSerializer().serializeToString(p.opfDoc));
 
@@ -416,19 +429,51 @@ async function applyEditsAndBuild(item) {
   // enhancement on and no replacement picked, the book's own cover is the
   // source — so the option works on every book, not only re-covered ones.
   const coverSource = sourceCoverBlob(p);
-  if (p.coverPath && coverSource && (p.newCoverFile || p.enhanceCover)) {
+  if (coverSource && (p.newCoverFile || p.enhanceCover)) {
     const finalBlob = p.enhanceCover ? await enhanceCover(coverSource, COVER_PRESET) : coverSource;
-    p.zip.file(p.coverPath, new Uint8Array(await finalBlob.arrayBuffer()));
 
-    const items = Array.from(p.opfDoc.getElementsByTagNameNS(OPF_NS, "item"));
-    const coverItem = items.find((it) => resolvePath(p.opfDir, it.getAttribute("href")) === p.coverPath);
-    if (coverItem) {
-      // Must track the actual encoding: enhancement re-encodes to JPEG (or
-      // PNG when the source had transparency), and a stale media-type breaks
-      // the cover in strict readers.
-      coverItem.setAttribute("media-type", finalBlob.type || coverItem.getAttribute("media-type"));
-      p.zip.file(p.opfPath, new XMLSerializer().serializeToString(p.opfDoc));
+    if (p.coverPath) {
+      // Book already had a cover file — overwrite its bytes in place.
+      p.zip.file(p.coverPath, new Uint8Array(await finalBlob.arrayBuffer()));
+
+      const items = Array.from(p.opfDoc.getElementsByTagNameNS(OPF_NS, "item"));
+      const coverItem = items.find((it) => resolvePath(p.opfDir, it.getAttribute("href")) === p.coverPath);
+      if (coverItem) {
+        // Must track the actual encoding: enhancement re-encodes to JPEG (or
+        // PNG when the source had transparency), and a stale media-type breaks
+        // the cover in strict readers.
+        coverItem.setAttribute("media-type", finalBlob.type || coverItem.getAttribute("media-type"));
+      }
+    } else {
+      // Book had no cover at all (no manifest item, no <meta name="cover">) —
+      // add one from scratch instead of silently dropping the new image.
+      const ext = finalBlob.type === "image/png" ? "png" : "jpg";
+      const newHref = "cover-added." + ext;
+      const newPath = resolvePath(p.opfDir, newHref);
+      const manifestEl = p.opfDoc.getElementsByTagNameNS(OPF_NS, "manifest")[0];
+      const newId = uniqueManifestId(p.opfDoc, "cover-added-img");
+
+      const newItem = p.opfDoc.createElementNS(OPF_NS, "item");
+      newItem.setAttribute("id", newId);
+      newItem.setAttribute("href", newHref);
+      newItem.setAttribute("media-type", finalBlob.type || "image/jpeg");
+      newItem.setAttribute("properties", "cover-image"); // EPUB3 readers
+      manifestEl.appendChild(newItem);
+
+      const metadataEl2 = p.opfDoc.getElementsByTagNameNS(OPF_NS, "metadata")[0];
+      const metaCover = p.opfDoc.createElementNS(OPF_NS, "meta");
+      metaCover.setAttribute("name", "cover"); // EPUB2 readers
+      metaCover.setAttribute("content", newId);
+      metadataEl2.appendChild(metaCover);
+
+      p.zip.file(newPath, new Uint8Array(await finalBlob.arrayBuffer()));
+
+      // Remember it: a second Baixar/Enviar click on the same item should
+      // now take the "already has a cover" branch above, not add a duplicate.
+      p.coverPath = newPath;
     }
+
+    p.zip.file(p.opfPath, new XMLSerializer().serializeToString(p.opfDoc));
   }
 
   const editedBytes = await p.zip.generateAsync({ type: "uint8array" });
