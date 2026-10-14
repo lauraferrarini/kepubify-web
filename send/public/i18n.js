@@ -67,6 +67,9 @@ const I18N = {
     "session.countdownPrefix": "expires in ",
     "session.expired": "expired",
     "session.deleteNow": "Delete now",
+    "session.or": "or",
+    "session.qrCaption": "scan with your phone's camera — it opens the file list directly, no code to type",
+    "session.linkedNotice": "✓ Linked automatically to your Kobo — the books are already on their way, nothing to type.",
 
     "about.heading": "How it works",
     "about.body": `<code>.epub</code> files marked for "Kobo" are converted to <code>.kepub.epub</code> right in your own browser (the same WebAssembly converter from <a href="../">kepubify-web</a>) before anything is sent. Then, the prepared files are uploaded all at once to temporary storage, which generates a short key. When the Kobo/Kindle opens the site's root URL, it already recognizes the device's browser and shows the code-entry screen directly, no menu digging required. Everything is automatically deleted a few minutes later, even if you don't delete it manually.`,
@@ -140,6 +143,9 @@ const I18N = {
     "session.countdownPrefix": "expira em ",
     "session.expired": "expirado",
     "session.deleteNow": "Apagar agora",
+    "session.or": "ou",
+    "session.qrCaption": "escaneie com a câmera do celular — abre a lista de arquivos direto, sem precisar digitar código",
+    "session.linkedNotice": "✓ Vinculado automaticamente ao seu Kobo — os livros já estão a caminho, não precisa digitar nada.",
 
     "about.heading": "Como funciona",
     "about.body": `Arquivos <code>.epub</code> marcados para "Kobo" são convertidos pra <code>.kepub.epub</code> no seu próprio navegador (mesmo conversor WebAssembly do <a href="../">kepubify-web</a>) antes de qualquer envio. Depois, os arquivos preparados sobem de uma vez pra um armazenamento temporário, que gera uma chave curta. Quando o Kobo/Kindle abre a raiz do site, ele já reconhece o navegador do dispositivo e mostra direto a tela de digitar o código, sem precisar navegar por menus. Tudo é apagado automaticamente poucos minutos depois, mesmo que você não apague manualmente.`,

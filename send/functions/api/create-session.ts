@@ -9,6 +9,8 @@
 // (que já vem liberado em qualquer conta Cloudflare). A troca é um limite
 // de tamanho por arquivo: o KV aceita no máximo ~25MB por valor.
 
+import { linkPairing } from "../_lib/pairing";
+
 export interface Env {
   SESSIONS: KVNamespace;
 }
@@ -126,5 +128,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const record: SessionRecord = { createdAt: now, expiresAt, files: fileMetas };
   await env.SESSIONS.put(`sess:${key}`, JSON.stringify(record), { expirationTtl: TTL_SECONDS });
 
-  return json({ key, expiresAt, deviceUrl: `/s/${key}` });
+  // Se este envio veio de um QR escaneado no Kobo (ver _lib/pairing.ts), o
+  // campo "pair" carrega o pairId — vincula a chave recém-criada a ele, e o
+  // Kobo (que fica se atualizando sozinho) pula direto pra lista de arquivos.
+  const pairId = form.get("pair");
+  let linked = false;
+  if (typeof pairId === "string" && pairId) {
+    linked = await linkPairing(env, pairId, key);
+  }
+
+  return json({ key, expiresAt, deviceUrl: `/s/${key}`, linked });
 };

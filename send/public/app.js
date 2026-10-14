@@ -13,9 +13,17 @@ const wasmStatus = document.getElementById("wasm-status");
 const sessionPanel = document.getElementById("session-panel");
 const sessionKeyEl = document.getElementById("session-key");
 const sessionHostUrlEl = document.getElementById("session-host-url");
+const sessionQrEl = document.getElementById("session-qr");
+let sessionQr = null;
 const sessionCountdownEl = document.getElementById("session-countdown");
 const sessionFilesEl = document.getElementById("session-files");
 const deleteSessionBtn = document.getElementById("delete-session");
+
+// Present when this page was opened by scanning the QR shown on the Kobo's
+// own screen (see send/functions/_lib/pairing.ts) — ties the session we're
+// about to create back to that specific Kobo, so it can pick it up on its
+// own without anyone typing the key.
+const pairId = new URLSearchParams(location.search).get("pair");
 
 /**
  * @typedef {{
@@ -319,6 +327,7 @@ sendAllBtn.addEventListener("click", async () => {
     for (const item of ready) {
       form.append("files", item.outBlob, item.outName);
     }
+    if (pairId) form.append("pair", pairId);
     const resp = await fetch("/api/create-session", { method: "POST", body: form });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
@@ -339,7 +348,27 @@ function showSessionPanel(data, sentItems) {
   sessionKeyEl.textContent = data.key;
   sessionHostUrlEl.textContent = location.origin;
 
+  const linkedNoticeEl = document.getElementById("session-linked-notice");
+  if (linkedNoticeEl) linkedNoticeEl.hidden = !data.linked;
+
   sessionFilesEl.innerHTML = sentItems.map((i) => `<li>${escapeHtml(i.outName)}</li>`).join("");
+
+  const receiveUrl = `${location.origin}/s/${data.key}`;
+  if (window.QRCode) {
+    if (sessionQr) {
+      sessionQr.clear();
+      sessionQr.makeCode(receiveUrl);
+    } else {
+      sessionQr = new QRCode(sessionQrEl, {
+        text: receiveUrl,
+        width: 160,
+        height: 160,
+        colorDark: "#1b1e1c",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+    }
+  }
 
   startCountdown(data.expiresAt);
   sessionPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });

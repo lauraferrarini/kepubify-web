@@ -93,10 +93,18 @@
 
   <section id="session-panel" class="session-panel" hidden aria-live="polite">
     <h2 data-i18n="session.heading">Send key generated</h2>
+    <p id="session-linked-notice" class="session-linked-notice" hidden data-i18n="session.linkedNotice">✓ Linked automatically to your Kobo — the books are already on their way, nothing to type.</p>
     <div class="session-key" id="session-key">----</div>
     <p class="session-hint">
       <span data-i18n="session.hintPart1">On your Kobo or Kindle's browser, open </span><strong id="session-host-url">this site</strong><span data-i18n="session.hintPart2"> — it recognizes the device automatically and already shows the screen to type the code. Just type this key.</span>
     </p>
+    <div class="session-or">
+      <span data-i18n="session.or">or</span>
+    </div>
+    <div class="session-qr-block">
+      <div id="session-qr" class="session-qr"></div>
+      <p class="session-qr-caption" data-i18n="session.qrCaption">scan with your phone's camera — it opens the file list directly, no code to type</p>
+    </div>
     <p class="session-countdown"><span data-i18n="session.countdownPrefix">expires in </span><span id="session-countdown">5:00</span></p>
     <ul id="session-files" class="session-files"></ul>
     <button id="delete-session" class="btn btn-ghost" data-i18n="session.deleteNow">Delete now</button>
@@ -117,6 +125,7 @@
 
 <script src="wasm_exec.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="i18n.js"></script>
 <script src="app.js"></script>
 <script src="edit.js"></script>
