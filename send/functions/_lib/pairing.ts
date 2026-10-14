@@ -82,6 +82,19 @@ export async function linkPairing(env: PairEnv, pairId: string, sessionKey: stri
   return true;
 }
 
+// Used by /pair-status, which the e-reader's page polls in the background.
+// exists=false means the pairing record is gone (expired) — the page reloads
+// itself to mint a fresh pairing and a fresh QR.
+export async function getPairingStatus(
+  env: PairEnv,
+  pairId: string
+): Promise<{ exists: boolean; sessionKey: string | null }> {
+  const raw = await env.SESSIONS.get(`pair:${pairId}`);
+  if (!raw) return { exists: false, sessionKey: null };
+  const record = JSON.parse(raw) as PairRecord;
+  return { exists: true, sessionKey: record.sessionKey };
+}
+
 // Clears the pairing cookie — used once we've redirected the Kobo to its
 // linked session, so the next time it loads "/" it starts a fresh pairing
 // instead of immediately re-redirecting to a session that's about to expire.

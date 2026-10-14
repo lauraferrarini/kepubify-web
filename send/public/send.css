@@ -174,3 +174,46 @@
   .device-toggle, .file-download { grid-column: 2; justify-self: start; }
   .row-remove { grid-row: 1; grid-column: 3; }
 }
+
+/* ---- leitor de QR (botão "Ler QR code") ---- */
+.session-unlinked-notice {
+  background: #f6e9df;
+  color: var(--amber);
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  padding: 0.6em 1em;
+  font-size: 0.88rem;
+  max-width: 28rem;
+  margin: 0 auto 1.2rem;
+}
+.scan-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(20, 24, 22, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.scan-overlay[hidden] { display: none; }
+.scan-box {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1.2rem;
+  width: 100%;
+  max-width: 24rem;
+  text-align: center;
+}
+.scan-box h2 { font-family: var(--serif); font-size: 1.15rem; margin: 0 0 0.8rem; }
+.scan-video-wrap {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: #111;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 0.8rem;
+}
+.scan-video-wrap video { width: 100%; height: 100%; object-fit: cover; }
+.scan-status { font-size: 0.88rem; color: var(--ink-soft); margin: 0 0 0.9rem; }
+.scan-status.error { color: var(--error); }

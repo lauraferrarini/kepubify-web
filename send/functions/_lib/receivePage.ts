@@ -1,30 +1,33 @@
-// HTML da tela "digite o código" — usada tanto quando a raiz "/" detecta um
+// HTML da tela do e-reader — usada tanto quando a raiz "/" detecta um
 // Kobo/Kindle quanto na rota fixa /receber (fallback manual, pra quando a
 // detecção por User-Agent falhar ou pra testar no navegador do computador).
 //
-// Precisa funcionar em navegadores muito antigos: HTML puro. O código
-// digitado manualmente vai por um <form> GET comum pra /goto, que
-// redireciona pra /s/<CODIGO> — sem depender de JS.
+// Tem duas formas de receber os livros:
+//  1) digitar a chave que apareceu no celular/computador — um <form> GET
+//     comum (sem depender de JS) que manda pra /goto, que redireciona pra
+//     /s/<CODIGO>;
+//  2) o QR code: é o "RG" deste e-reader (o pairId de _lib/pairing.ts). No
+//     celular, o botão "Ler QR code" do send2kobo lê esta imagem, vincula os
+//     dois aparelhos e já envia os arquivos. Aqui, um scriptzinho pergunta a
+//     /pair-status a cada poucos segundos se já chegou algo e, quando chega,
+//     abre a lista de arquivos sozinho. É feito em segundo plano (XHR) de
+//     propósito: recarregar a página inteira apagaria a chave que a pessoa
+//     estivesse digitando. Sem JS, o <noscript> recarrega a página a cada
+//     poucos segundos e index.ts/receber.ts fazem o redirecionamento.
 //
-// O QR code É o pareamento automático: aponta pra "/app?pair=<pairId>" (ver
-// _lib/pairing.ts). Essa mesma tela também fica se recarregando sozinha a
-// cada poucos segundos via <meta http-equiv="refresh">, de novo sem precisar
-// de JS — cada recarregada é quem confere, no servidor, se o celular já
-// vinculou uma sessão a esse pairId; se sim, index.ts/receber.ts redirecionam
-// direto pra /s/<chave> antes mesmo de chegar a renderizar esta página de
-// novo. Ou seja: ler o QR com o celular, preparar e enviar por lá é
-// suficiente — nada pra digitar aqui quando esse caminho é usado.
+// O QR também carrega a URL "/app?pair=<pairId>", então a câmera comum do
+// celular continua funcionando como atalho (abre o send2kobo já pareado).
 
 export function receivePage(origin: string, pairId: string): Response {
   const qrTarget = `${origin}/app?pair=${encodeURIComponent(pairId)}`;
-  const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(qrTarget)}`;
+  const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(qrTarget)}`;
 
   const html = `<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="refresh" content="4">
+<noscript><meta http-equiv="refresh" content="4"></noscript>
 <title>send2kobo — digite o código</title>
 <style>
   body { font-family: Georgia, "Times New Roman", serif; margin: 0; padding: 24px; background:#fff; color:#111; text-align: center; }
@@ -62,19 +65,43 @@ export function receivePage(origin: string, pairId: string): Response {
 </head>
 <body>
 <h1>send2kobo</h1>
-<p class="hint">Aponte a câmera do celular pra essa imagem:</p>
-<div class="qr-block">
-  <img src="${qrImgUrl}" width="180" height="180" alt="QR code para conectar o celular a esta tela">
-</div>
-<p class="qr-caption">Isso abre o send2kobo no celular já conectado a esta tela. Prepare e envie os livros por lá — eles aparecem aqui sozinhos, sem precisar digitar nada. Esta página se atualiza sozinha a cada poucos segundos.</p>
-<p class="or">— ou, se já tem um código —</p>
+<p class="hint">Digite a chave que apareceu no celular ou computador:</p>
 <form method="get" action="/goto">
   <div>
     <input type="text" name="k" maxlength="8" autocapitalize="characters" autocomplete="off">
   </div>
   <button type="submit">Buscar arquivos</button>
 </form>
+<p class="or">— ou, pelo QR code —</p>
+<div class="qr-block">
+  <img src="${qrImgUrl}" width="240" height="240" alt="QR code deste e-reader">
+</div>
+<p class="qr-caption">No celular, abra o send2kobo, prepare os arquivos e toque em <b>Ler QR code</b>, apontando a câmera pra essa imagem. Os livros aparecem aqui sozinhos.</p>
 <p class="fallback">Não é um Kobo/Kindle? <a href="/app">abrir a página de envio</a>.</p>
+<script>
+(function () {
+  var pairId = "${pairId}";
+  function poll() {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/pair-status?id=" + pairId, true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status === 200 && xhr.responseText) {
+        window.location.href = "/s/" + xhr.responseText;
+        return;
+      }
+      if (xhr.status === 410) {
+        window.location.reload();
+        return;
+      }
+      setTimeout(poll, 3000);
+    };
+    xhr.onerror = function () { setTimeout(poll, 5000); };
+    xhr.send();
+  }
+  setTimeout(poll, 3000);
+})();
+</script>
 </body>
 </html>`;
   return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });

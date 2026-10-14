@@ -84,6 +84,7 @@
         <button id="download-all" class="btn btn-ghost" disabled data-i18n="send.download">Download</button>
         <button id="prepare-all" class="btn btn-primary" disabled data-i18n="send.prepare">Prepare</button>
         <button id="send-all" class="btn btn-accent" disabled data-i18n="send.generateKey">Generate send key</button>
+        <button id="scan-qr" class="btn btn-accent" disabled data-i18n="send.scanQr">Scan QR code</button>
         <button id="clear-all" class="btn btn-ghost" disabled data-i18n="send.clear">Clear</button>
       </div>
     </div>
@@ -94,14 +95,15 @@
   <section id="session-panel" class="session-panel" hidden aria-live="polite">
     <h2 data-i18n="session.heading">Send key generated</h2>
     <p id="session-linked-notice" class="session-linked-notice" hidden data-i18n="session.linkedNotice">✓ Linked automatically to your Kobo — the books are already on their way, nothing to type.</p>
+    <p id="session-unlinked-notice" class="session-unlinked-notice" hidden data-i18n="session.unlinkedNotice">Couldn't link to the e-reader (its screen may have expired). Type the key below on the e-reader instead.</p>
     <div class="session-key" id="session-key">----</div>
-    <p class="session-hint">
+    <p class="session-hint" id="session-hint">
       <span data-i18n="session.hintPart1">On your Kobo or Kindle's browser, open </span><strong id="session-host-url">this site</strong><span data-i18n="session.hintPart2"> — it recognizes the device automatically and already shows the screen to type the code. Just type this key.</span>
     </p>
-    <div class="session-or">
+    <div class="session-or" id="session-or">
       <span data-i18n="session.or">or</span>
     </div>
-    <div class="session-qr-block">
+    <div class="session-qr-block" id="session-qr-block">
       <div id="session-qr" class="session-qr"></div>
       <p class="session-qr-caption" data-i18n="session.qrCaption">scan with your phone's camera — it opens the file list directly, no code to type</p>
     </div>
@@ -123,11 +125,25 @@
   <p data-i18n-html="footer.body"></p>
 </footer>
 
+<div id="scan-overlay" class="scan-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="scan-title">
+  <div class="scan-box">
+    <h2 id="scan-title" data-i18n="scan.title">Scan the e-reader's QR code</h2>
+    <div class="scan-video-wrap">
+      <video id="scan-video" playsinline muted></video>
+    </div>
+    <canvas id="scan-canvas" hidden></canvas>
+    <p id="scan-status" class="scan-status" data-i18n="scan.hint">Point the camera at the QR code shown on your e-reader's screen.</p>
+    <button type="button" id="scan-cancel" class="btn btn-ghost" data-i18n="scan.cancel">Cancel</button>
+  </div>
+</div>
+
 <script src="wasm_exec.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="i18n.js"></script>
 <script src="app.js"></script>
+<script src="scan.js"></script>
 <script src="edit.js"></script>
 <script src="tabs.js"></script>
 </body>

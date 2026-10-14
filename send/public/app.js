@@ -7,6 +7,7 @@ const queueSection = document.querySelector(".queue-section");
 const prepareAllBtn = document.getElementById("prepare-all");
 const downloadAllBtn = document.getElementById("download-all");
 const sendAllBtn = document.getElementById("send-all");
+const scanQrBtn = document.getElementById("scan-qr");
 const clearAllBtn = document.getElementById("clear-all");
 const wasmStatus = document.getElementById("wasm-status");
 
@@ -23,7 +24,7 @@ const deleteSessionBtn = document.getElementById("delete-session");
 // own screen (see send/functions/_lib/pairing.ts) — ties the session we're
 // about to create back to that specific Kobo, so it can pick it up on its
 // own without anyone typing the key.
-const pairId = new URLSearchParams(location.search).get("pair");
+const urlPairId = new URLSearchParams(location.search).get("pair");
 
 /**
  * @typedef {{
@@ -219,6 +220,9 @@ function updateButtons() {
   prepareAllBtn.disabled = !hasPending;
   downloadAllBtn.disabled = !hasReady;
   sendAllBtn.disabled = !hasReady;
+  // "Ler QR code" also prepares anything still pending, so it only needs
+  // something in the queue that isn't mid-preparation.
+  scanQrBtn.disabled = queue.length === 0 || queue.some((q) => q.status === "preparing");
   clearAllBtn.disabled = queue.length === 0;
 }
 
@@ -316,9 +320,12 @@ clearAllBtn.addEventListener("click", () => {
 
 // ---- Envio: sobe tudo de uma vez e gera a chave ---------------------------
 
-sendAllBtn.addEventListener("click", async () => {
+// Sobe os arquivos prontos e mostra o painel da chave. Se vier um pairId (da
+// leitura do QR do e-reader, ou da URL quando a câmera comum abriu o site),
+// o servidor já vincula a sessão àquele e-reader.
+async function sendReady(pairId) {
   const ready = queue.filter((q) => q.status === "ready" && q.outBlob);
-  if (!ready.length) return;
+  if (!ready.length) return false;
 
   sendAllBtn.disabled = true;
   sendAllBtn.textContent = t("send.sending");
@@ -331,25 +338,35 @@ sendAllBtn.addEventListener("click", async () => {
     const resp = await fetch("/api/create-session", { method: "POST", body: form });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
-    showSessionPanel(data, ready);
+    showSessionPanel(data, ready, !!pairId);
+    return true;
   } catch (err) {
     console.error(err);
     wasmStatus.textContent = t("send.sendErrorPrefix") + (err.message || String(err));
     wasmStatus.classList.add("failed");
+    return false;
   } finally {
-    sendAllBtn.disabled = false;
     sendAllBtn.textContent = t("send.generateKey");
+    updateButtons();
   }
-});
+}
 
-function showSessionPanel(data, sentItems) {
+sendAllBtn.addEventListener("click", () => sendReady(urlPairId));
+
+function showSessionPanel(data, sentItems, pairAttempted) {
   currentSessionKey = data.key;
   sessionPanel.hidden = false;
   sessionKeyEl.textContent = data.key;
   sessionHostUrlEl.textContent = location.origin;
 
-  const linkedNoticeEl = document.getElementById("session-linked-notice");
-  if (linkedNoticeEl) linkedNoticeEl.hidden = !data.linked;
+  // Linked automatically: the e-reader opens the file list on its own, so
+  // the "type this key" instructions would only confuse. Not linked (or no
+  // pairing at all): show everything as before.
+  document.getElementById("session-linked-notice").hidden = !data.linked;
+  document.getElementById("session-unlinked-notice").hidden = !(pairAttempted && !data.linked);
+  for (const id of ["session-hint", "session-or", "session-qr-block"]) {
+    document.getElementById(id).hidden = !!data.linked;
+  }
 
   sessionFilesEl.innerHTML = sentItems.map((i) => `<li>${escapeHtml(i.outName)}</li>`).join("");
 
