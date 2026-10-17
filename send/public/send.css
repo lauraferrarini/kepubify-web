@@ -143,6 +143,9 @@
   align-items: center;
   margin-bottom: 1.2rem;
 }
+/* "display: flex" acima ganha do atributo hidden do navegador — sem esta
+   linha o QR continuava aparecendo depois de vincular ao e-reader. */
+.session-qr-block[hidden] { display: none; }
 .session-qr {
   display: inline-block;
   padding: 0.6rem;
