@@ -15,11 +15,12 @@
 //     estivesse digitando. Sem JS, o <noscript> recarrega a página a cada
 //     poucos segundos e index.ts/receber.ts fazem o redirecionamento.
 //
-// O QR também carrega a URL "/app?pair=<pairId>", então a câmera comum do
-// celular continua funcionando como atalho (abre o send2kobo já pareado).
+// O QR carrega a URL "/p/<pairId>" (functions/p/[id].ts): a câmera comum do
+// celular abre o send2kobo já pareado, só falta escolher, preparar e enviar.
+// O leitor de dentro da página (scan.js) também entende esse formato.
 
 export function receivePage(origin: string, pairId: string): Response {
-  const qrTarget = `${origin}/app?pair=${encodeURIComponent(pairId)}`;
+  const qrTarget = `${origin}/p/${encodeURIComponent(pairId)}`;
   const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(qrTarget)}`;
 
   const html = `<!doctype html>

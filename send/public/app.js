@@ -24,7 +24,58 @@ const deleteSessionBtn = document.getElementById("delete-session");
 // own screen (see send/functions/_lib/pairing.ts) — ties the session we're
 // about to create back to that specific Kobo, so it can pick it up on its
 // own without anyone typing the key.
+// Pareamento vindo da URL: a câmera comum do celular leu o QR do e-reader e
+// abriu "/p/<id>", que redireciona pra cá com ?pair=<id>. Só vale depois que
+// o servidor confirmar que ele ainda existe (ver initPairing).
 const urlPairId = new URLSearchParams(location.search).get("pair");
+let activePairId = null;
+
+const pairBannerEl = document.getElementById("pair-banner");
+
+function showPairBanner(which) {
+  // which: "ok" | "expired" | "used" | null
+  pairBannerEl.hidden = !which;
+  pairBannerEl.classList.toggle("warn", which === "expired");
+  for (const k of ["ok", "expired", "used"]) {
+    document.getElementById(`pair-banner-${k}`).hidden = k !== which;
+  }
+}
+
+// Com pareamento ativo, "Gerar chave de envio" vira "Enviar pro e-reader" e o
+// "Ler QR code" some — o e-reader já está vinculado.
+function applyPairedUi(paired) {
+  sendAllBtn.setAttribute("data-i18n", paired ? "send.sendToEreader" : "send.generateKey");
+  sendAllBtn.textContent = t(sendAllBtn.getAttribute("data-i18n"));
+  scanQrBtn.hidden = paired;
+}
+
+async function initPairing() {
+  if (!urlPairId) return;
+  let valid = true; // sem rede pra conferir: deixa o servidor decidir no envio
+  try {
+    const resp = await fetch(`/pair-status?id=${encodeURIComponent(urlPairId)}`, { cache: "no-store" });
+    const body = resp.ok ? await resp.text() : null;
+    valid = resp.ok && !body; // 410 = expirou; corpo preenchido = já recebeu arquivos
+  } catch (e) {
+    /* mantém valid = true */
+  }
+  if (valid) {
+    activePairId = urlPairId;
+    applyPairedUi(true);
+    showPairBanner("ok");
+  } else {
+    showPairBanner("expired");
+  }
+}
+
+// Depois de um envio vinculado o pareamento está "gasto": o e-reader já abriu
+// a lista e não está mais esperando. Volta ao modo normal, sem fingir que dá
+// pra mandar mais pro mesmo e-reader.
+function markPairUsed() {
+  activePairId = null;
+  applyPairedUi(false);
+  showPairBanner("used");
+}
 
 /**
  * @typedef {{
@@ -339,6 +390,7 @@ async function sendReady(pairId) {
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
     showSessionPanel(data, ready, !!pairId);
+    if (data.linked && pairId && pairId === activePairId) markPairUsed();
     return true;
   } catch (err) {
     console.error(err);
@@ -346,12 +398,12 @@ async function sendReady(pairId) {
     wasmStatus.classList.add("failed");
     return false;
   } finally {
-    sendAllBtn.textContent = t("send.generateKey");
+    sendAllBtn.textContent = t(sendAllBtn.getAttribute("data-i18n"));
     updateButtons();
   }
 }
 
-sendAllBtn.addEventListener("click", () => sendReady(urlPairId));
+sendAllBtn.addEventListener("click", () => sendReady(activePairId));
 
 function showSessionPanel(data, sentItems, pairAttempted) {
   currentSessionKey = data.key;
@@ -425,3 +477,5 @@ deleteSessionBtn.addEventListener("click", async () => {
     deleteSessionBtn.disabled = false;
   }
 });
+
+initPairing();

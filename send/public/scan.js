@@ -20,14 +20,18 @@ let scanFrame = 0;
 let scanActive = false; // câmera ligada e procurando QR
 let scanBusy = false; // já achou o QR e está preparando/enviando
 
-// O QR do e-reader carrega "https://<site>/app?pair=<16 hex>". Aceita também
-// o id puro, por garantia.
+// O QR do e-reader carrega "https://<site>/p/<16 hex>". Também aceita o
+// formato antigo ("/app?pair=<16 hex>") e o id puro, por garantia.
 function extractPairId(text) {
   const raw = String(text || "").trim();
-  if (/^[a-f0-9]{16}$/i.test(raw)) return raw.toLowerCase();
+  const HEX = /^[a-f0-9]{16}$/i;
+  if (HEX.test(raw)) return raw.toLowerCase();
   try {
-    const p = new URL(raw).searchParams.get("pair");
-    if (p && /^[a-f0-9]{16}$/i.test(p)) return p.toLowerCase();
+    const u = new URL(raw);
+    const m = u.pathname.match(/^\/p\/([a-f0-9]{16})\/?$/i);
+    if (m) return m[1].toLowerCase();
+    const p = u.searchParams.get("pair");
+    if (p && HEX.test(p)) return p.toLowerCase();
   } catch (e) {
     /* não é uma URL */
   }
