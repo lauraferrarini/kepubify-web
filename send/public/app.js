@@ -157,7 +157,8 @@ function addFiles(fileListLike) {
   const all = Array.from(fileListLike);
   for (const file of all) {
     const isEpub = file.name.toLowerCase().endsWith(".epub") && !file.name.toLowerCase().endsWith(".kepub.epub");
-    queue.push({ id: nextId++, file, isEpub, convertToKobo: isEpub, status: "pending" });
+    const isPdf = /\.pdf$/i.test(file.name) || file.type === "application/pdf";
+    queue.push({ id: nextId++, file, isEpub, isPdf, pdfTarget: isPdf ? "kepub" : null, convertToKobo: isEpub, status: "pending" });
   }
   renderQueue();
 }
@@ -211,10 +212,17 @@ function renderQueue() {
 
     let toggleHtml;
     if (item.status === "ready") {
-      const converted = item.fromEdit ? !!item.wasConverted : (item.isEpub && item.convertToKobo);
+      const converted = item.fromEdit ? !!item.wasConverted : ((item.isEpub && item.convertToKobo) || (item.isPdf && item.pdfTarget !== "none"));
       toggleHtml = converted
         ? `<span class="device-toggle disabled convertido">${t("badge.converted")}</span>`
         : `<span class="device-toggle disabled">${t("badge.notConverted")}</span>`;
+    } else if (item.isPdf) {
+      const dis = item.status !== "pending" ? "disabled" : "";
+      toggleHtml = `<select class="pdf-select" data-id="${item.id}" aria-label="${escapeHtml(t("pdf.aria"))}" ${dis}>
+           <option value="kepub" ${item.pdfTarget === "kepub" ? "selected" : ""}>${t("pdf.toKepub")}</option>
+           <option value="epub" ${item.pdfTarget === "epub" ? "selected" : ""}>${t("pdf.toEpub")}</option>
+           <option value="none" ${item.pdfTarget === "none" ? "selected" : ""}>${t("pdf.keep")}</option>
+         </select>`;
     } else if (item.isEpub) {
       toggleHtml = `<label class="device-toggle ${item.status !== "pending" ? "disabled" : ""}">
            <input type="checkbox" data-id="${item.id}" class="kobo-toggle" ${item.convertToKobo ? "checked" : ""} ${item.status !== "pending" ? "disabled" : ""}>
@@ -242,6 +250,13 @@ function renderQueue() {
       const id = Number(e.target.dataset.id);
       const item = queue.find((q) => q.id === id);
       if (item) item.convertToKobo = e.target.checked;
+    });
+  });
+
+  fileList.querySelectorAll(".pdf-select").forEach((el) => {
+    el.addEventListener("change", (e) => {
+      const item = queue.find((q) => q.id === Number(e.target.dataset.id));
+      if (item) item.pdfTarget = e.target.value;
     });
   });
 
@@ -286,7 +301,28 @@ async function prepareOne(item) {
   await nextFrame();
 
   try {
-    if (item.isEpub && item.convertToKobo) {
+    if (item.isPdf && item.pdfTarget !== "none") {
+      // PDF -> EPUB reflowable (texto de verdade, capítulos, sumário) e, se
+      // pedido, EPUB -> KEPUB pelo mesmo kepubify local.
+      if (item.pdfTarget === "kepub" && !wasmReady) throw new Error("converter not loaded yet");
+      await loadPdfLib();
+      let res;
+      try {
+        res = await window.PdfConvert.convert(await item.file.arrayBuffer(), { fileName: item.file.name });
+      } catch (err) {
+        if (err && err.message === "NO_TEXT") throw new Error(t("pdf.noText"));
+        throw new Error(t("pdf.failed") + ((err && err.message) || err));
+      }
+      let bytes = res.data;
+      if (item.pdfTarget === "kepub") {
+        const r = window.kepubifyConvert(bytes);
+        if (!r.ok) throw new Error(r.error);
+        bytes = new Uint8Array(r.data.length);
+        bytes.set(r.data);
+      }
+      item.outBlob = new Blob([bytes], { type: "application/epub+zip" });
+      item.outName = baseName(item.file.name) + (item.pdfTarget === "kepub" ? ".kepub.epub" : ".epub");
+    } else if (item.isEpub && item.convertToKobo) {
       if (!wasmReady) throw new Error("converter not loaded yet");
       const buf = new Uint8Array(await item.file.arrayBuffer());
       const result = window.kepubifyConvert(buf);
@@ -308,7 +344,26 @@ async function prepareOne(item) {
 }
 
 function baseName(name) {
-  return name.replace(/\.epub$/i, "");
+  return name.replace(/\.(epub|pdf)$/i, "");
+}
+
+// pdf.js (vendorizado em /vendor) só é baixado quando aparece um PDF a converter.
+let pdfLibPromise = null;
+function loadPdfLib() {
+  if (window.pdfjsLib) return Promise.resolve();
+  if (!pdfLibPromise) {
+    pdfLibPromise = new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "vendor/pdf.min.js";
+      s.onload = () => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "vendor/pdf.worker.min.js";
+        resolve();
+      };
+      s.onerror = () => { pdfLibPromise = null; reject(new Error("could not load pdf.js")); };
+      document.head.appendChild(s);
+    });
+  }
+  return pdfLibPromise;
 }
 
 function nextFrame() {

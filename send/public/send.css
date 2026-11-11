@@ -236,3 +236,15 @@
 }
 .pair-banner[hidden] { display: none; }
 .pair-banner.warn { background: #f6e9df; color: var(--amber); border-color: var(--amber); }
+
+/* PDF rows: choose EPUB / KEPUB / keep as-is */
+.pdf-select {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 1px solid var(--line, #c9c2b3);
+  border-radius: 4px;
+  padding: 0.25em 0.4em;
+  max-width: 9rem;
+}
