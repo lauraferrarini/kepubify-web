@@ -266,7 +266,13 @@
         lastFront = null;
         continue;
       }
+      if (!chap && !book.author && b.type === "para" && b.kind !== "quote" && /^by\s+\S/.test(plain(b)) && plain(b).length < 120) {
+        book.author = plain(b).replace(/^by\s+/i, "").trim(); continue;
+      }
       const isQuote = b.type === "para" && b.kind === "quote";
+      if ((state === "summary" || state === "notes") && g && g.html && !isQuote) {
+        startChapter(book.title || ""); state = "body"; chap.body.push(b); continue;
+      }
       if (state === "summary" || state === "notes") {
         // resumo/notas da obra: vão até o próximo título ou rótulo — ou, em
         // fics de capítulo único, até uma quebra de página forçada (página curta)
@@ -308,7 +314,7 @@
       if (r.href) core = '<a href="' + esc(r.href) + '">' + core + "</a>";
       html += esc(m[1]) + core + esc(m[3]);
     }
-    return html;
+    return html.replace(/\n/g, "<br/>");
   }
 
   function blocksToHtml(blocks, inQuote) {
@@ -371,14 +377,15 @@ section.chapter-endnotes{margin-top:1.8em;border-top:1px solid #888;padding-top:
     row("Fandom", m.Fandom); row("Relationship", m.Relationship); row("Characters", m.Characters);
     row("Additional Tags", m["Additional Tags"]); row("Language", m.Language); row("Series", m.Series); row("Stats", stats);
     const titleHtml = book.sourceUrl ? '<a href="' + esc(book.sourceUrl) + '">' + esc(title) + "</a>" : esc(title);
+    const hasPreface = !!(metaRows.length || book.summary.length || book.notes.length || book.author || book.sourceUrl);
     let preface = XHTML_HEAD(title, lang) + '<section epub:type="frontmatter preface" role="doc-preface">';
     preface += '<h1 class="work-title">' + titleHtml + "</h1>";
-    preface += '<p class="byline">by ' + esc(author) + "</p>";
+    if (book.author) preface += '<p class="byline">by ' + esc(author) + "</p>";
     if (metaRows.length) preface += '<div class="work-meta">' + metaRows.join("\n") + "</div>";
     if (book.summary.length) preface += '<p class="label">Summary</p><blockquote>' + blocksToHtml(book.summary, true) + "</blockquote>";
     if (book.notes.length) preface += '<p class="label">Notes</p><blockquote>' + blocksToHtml(book.notes, true) + "</blockquote>";
     preface += "</section></body></html>";
-    zip.file("EPUB/preface.xhtml", preface);
+    if (hasPreface) zip.file("EPUB/preface.xhtml", preface);
 
     // --- capítulos
     const chFiles = [];
@@ -396,7 +403,7 @@ section.chapter-endnotes{margin-top:1.8em;border-top:1px solid #888;padding-top:
     });
 
     // --- sumário
-    const tocItems = [{ file: "preface.xhtml", title: "Preface" }].concat(chFiles);
+    const tocItems = (hasPreface ? [{ file: "preface.xhtml", title: "Preface" }] : []).concat(chFiles);
     zip.file("EPUB/nav.xhtml",
       '<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE html>\n<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="' + lang + '" xml:lang="' + lang + '"><head><title>Table of Contents</title></head><body><nav epub:type="toc" id="toc" role="doc-toc"><h1>Table of Contents</h1><ol>' +
       tocItems.map((t) => '<li><a href="' + t.file + '">' + esc(t.title) + "</a></li>").join("") + "</ol></nav></body></html>");
@@ -430,10 +437,10 @@ section.chapter-endnotes{margin-top:1.8em;border-top:1px solid #888;padding-top:
 
     const manifest = ['<item href="nav.xhtml" id="nav" media-type="application/xhtml+xml" properties="nav"/>',
       '<item href="style.css" id="css" media-type="text/css"/>',
-      '<item href="preface.xhtml" id="preface" media-type="application/xhtml+xml"/>']
+      ].concat(hasPreface ? ['<item href="preface.xhtml" id="preface" media-type="application/xhtml+xml"/>'] : [])
       .concat(chFiles.map((c) => '<item href="' + c.file + '" id="' + c.id + '" media-type="application/xhtml+xml"/>'))
       .concat(['<item href="toc.ncx" id="ncx" media-type="application/x-dtbncx+xml"/>']);
-    const spine = ['<itemref idref="preface"/>'].concat(chFiles.map((c) => '<itemref idref="' + c.id + '"/>'));
+    const spine = (hasPreface ? ['<itemref idref="preface"/>'] : []).concat(chFiles.map((c) => '<itemref idref="' + c.id + '"/>'));
     zip.file("EPUB/content.opf",
       '<?xml version="1.0" encoding="UTF-8"?>\n<package xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" version="3.0" unique-identifier="pub-id" xml:lang="' + lang + '"><metadata>' +
       meta.join("\n") + "</metadata><manifest>" + manifest.join("\n") + '</manifest><spine toc="ncx">' + spine.join("\n") + "</spine></package>");
@@ -486,7 +493,7 @@ section.chapter-endnotes{margin-top:1.8em;border-top:1px solid #888;padding-top:
     return res;
   }
 
-  const api = { convert, _internals: { extractPages, buildLines, geometry, parseBlocks, buildBook } };
+  const api = { convert, buildEpub, buildBook, _internals: { extractPages, buildLines, geometry, parseBlocks, buildBook } };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.PdfConvert = api;
 })(typeof window !== "undefined" ? window : globalThis);

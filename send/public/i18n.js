@@ -67,6 +67,11 @@ const I18N = {
     "pdf.loading": "reading PDF…",
     "pdf.noText": "this PDF has no selectable text (scanned?), so it can't be converted",
     "pdf.failed": "couldn't convert this PDF: ",
+    "html.toKepub": "HTML → KEPUB",
+    "html.toEpub": "HTML → EPUB",
+    "html.keep": "keep HTML",
+    "html.noText": "this HTML file has no readable text",
+    "html.failed": "couldn't convert this HTML: ",
 
     "session.heading": "Send key generated",
     "session.hintPart1": "On your Kobo or Kindle's browser, open ",
@@ -165,6 +170,11 @@ const I18N = {
     "pdf.loading": "lendo o PDF…",
     "pdf.noText": "esse PDF não tem texto selecionável (escaneado?), então não dá pra converter",
     "pdf.failed": "não consegui converter esse PDF: ",
+    "html.toKepub": "HTML → KEPUB",
+    "html.toEpub": "HTML → EPUB",
+    "html.keep": "manter HTML",
+    "html.noText": "esse HTML não tem texto legível",
+    "html.failed": "não consegui converter esse HTML: ",
 
     "session.heading": "Chave de envio gerada",
     "session.hintPart1": "No navegador do seu Kobo ou Kindle, abra ",
