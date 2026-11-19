@@ -410,7 +410,10 @@ section.chapter-endnotes{margin-top:1.8em;border-top:1px solid #888;padding-top:
     meta.push("<dc:title>" + esc(title) + "</dc:title>");
     meta.push("<dc:language>" + lang + "</dc:language>");
     meta.push("<dc:creator>" + esc(author) + "</dc:creator>");
-    if (summaryText) meta.push("<dc:description>" + esc(summaryText) + "</dc:description>");
+    const descHtml = root.Ao3Meta
+      ? root.Ao3Meta.buildDescription({ summary: summaryText, pairings: splitTags(m.Relationship), tags: splitTags(m["Additional Tags"]), words })
+      : esc(summaryText);
+    if (descHtml) meta.push("<dc:description>" + esc(descHtml) + "</dc:description>");
     if (published) meta.push("<dc:date>" + published + "T00:00:00Z</dc:date>");
     for (const t of splitTags(m["Additional Tags"])) meta.push("<dc:subject>" + esc(t) + "</dc:subject>");
     meta.push('<meta name="completed" content="' + (completed ? 1 : 0) + '"/>');

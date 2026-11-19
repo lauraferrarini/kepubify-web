@@ -324,13 +324,18 @@ async function prepareOne(item) {
       item.outName = baseName(item.file.name) + (item.pdfTarget === "kepub" ? ".kepub.epub" : ".epub");
     } else if (item.isEpub && item.convertToKobo) {
       if (!wasmReady) throw new Error("converter not loaded yet");
-      const buf = new Uint8Array(await item.file.arrayBuffer());
+      let buf = new Uint8Array(await item.file.arrayBuffer());
+      buf = (await window.Ao3Meta.enrichEpub(buf, window.JSZip)) || buf;
       const result = window.kepubifyConvert(buf);
       if (!result.ok) throw new Error(result.error);
       const bytes = new Uint8Array(result.data.length);
       bytes.set(result.data);
       item.outBlob = new Blob([bytes], { type: "application/epub+zip" });
       item.outName = baseName(item.file.name) + ".kepub.epub";
+    } else if (item.isEpub) {
+      const enriched = await window.Ao3Meta.enrichEpub(new Uint8Array(await item.file.arrayBuffer()), window.JSZip);
+      item.outBlob = enriched ? new Blob([enriched], { type: "application/epub+zip" }) : item.file;
+      item.outName = item.file.name;
     } else {
       item.outBlob = item.file;
       item.outName = item.file.name;
