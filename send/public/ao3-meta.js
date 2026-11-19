@@ -39,6 +39,39 @@
     return { isAo3, pairings: rel, words, tags };
   }
 
+  // EPUBs baixados direto do AO3 (feitos pelo Calibre) não têm os metadados
+  // "ao3:*"; as tags ficam na página de abertura do livro (tabela dl.tags).
+  async function infoFromPreface(zip) {
+    const names = Object.keys(zip.files).filter((n) => /\.x?html?$/i.test(n) && !zip.files[n].dir).sort().slice(0, 8);
+    for (const n of names) {
+      const text = await zip.file(n).async("string");
+      if (!/<dl[^>]*class="[^"]*\btags\b/i.test(text)) continue;
+      const doc = new DOMParser().parseFromString(text, "text/html");
+      const dl = doc.querySelector("dl.tags");
+      if (!dl) continue;
+      const rows = {};
+      for (const dt of Array.from(dl.querySelectorAll("dt"))) {
+        let dd = dt.nextElementSibling;
+        while (dd && dd.tagName.toLowerCase() !== "dd") dd = dd.nextElementSibling;
+        if (!dd) continue;
+        const label = dt.textContent.replace(/:\s*$/, "").trim().toLowerCase();
+        const links = Array.from(dd.querySelectorAll("a")).map((a) => a.textContent.trim()).filter(Boolean);
+        rows[label] = { links, text: dd.textContent.replace(/\s+/g, " ").trim() };
+      }
+      const pick = (...keys) => { for (const k of keys) if (rows[k]) return rows[k]; return null; };
+      const rel = pick("relationships", "relationship");
+      const add = pick("additional tags");
+      const stats = pick("stats");
+      const w = stats && /Words:\s*([\d,.]+)/.exec(stats.text);
+      return {
+        pairings: rel ? (rel.links.length ? rel.links : rel.text.split(/,\s+/)) : [],
+        tags: add ? (add.links.length ? add.links : add.text.split(/,\s+/)) : [],
+        words: w ? w[1].replace(/\D/g, "") : "",
+      };
+    }
+    return null;
+  }
+
   // Recebe os bytes de um EPUB; devolve os bytes novos, ou null se não for do
   // AO3 / não houver nada a acrescentar / algo falhar (aí o arquivo segue igual).
   async function enrichEpub(bytes, JSZip) {
@@ -50,6 +83,16 @@
       const doc = new DOMParser().parseFromString(opfText, "application/xml");
       if (doc.getElementsByTagName("parsererror").length) return null;
       const info = readInfo(doc);
+      if (!info.pairings.length || !info.words || !info.tags.length) {
+        const pre = await infoFromPreface(zip);
+        if (pre) {
+          info.isAo3 = true;
+          if (!info.pairings.length) info.pairings = pre.pairings;
+          if (!info.words) info.words = pre.words;
+          // nos EPUBs do Calibre os dc:subject misturam fandom/personagens/tags; a tabela é mais fiel
+          if (pre.tags.length) info.tags = pre.tags;
+        }
+      }
       if (!info.isAo3 || !(info.pairings.length || info.words || info.tags.length)) return null;
 
       let desc = doc.getElementsByTagNameNS(DC_NS, "description")[0];
