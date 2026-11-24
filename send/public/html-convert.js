@@ -100,9 +100,10 @@
         const text = textOf(runs);
         if (!text) continue;
         if (LABEL_RE.test(text)) tokens.push({ type: "label", text });
+        else if (/^(preface|chapter index|contents?|table of contents)$/i.test(text)) continue;
         else {
           const prev = tokens[tokens.length - 1];
-          if (prev && prev.type === "heading") prev.text += (/^chapter\s+\d+$/i.test(prev.text) ? ": " : " ") + text;
+          if (prev && prev.type === "heading" && /^chapter\s+\d+$/i.test(prev.text)) prev.text += (/^chapter\s+\d+$/i.test(prev.text) ? ": " : " ") + text;
           else tokens.push({ type: "heading", text, lastLine: POS });
         }
         continue;
@@ -142,13 +143,18 @@
     const link = Array.from(doc.querySelectorAll("a[href]")).map((a) => a.getAttribute("href")).find((h) => /archiveofourown\.org\/works\/\d+/i.test(h));
     if (link) frontLines.unshift({ text: link, x0: 0 });
 
-    const skip = (el) => (tagsDl && el === tagsDl) || (el.matches && el.matches("p.message, .message"));
+    // "Preface"/"Chapter Index" (h2.toc-heading) são títulos escondidos só para o
+    // sumário do AO3; se entrarem, viram "Preface Nome da Fic" no título.
+    const skip = (el) => (tagsDl && el === tagsDl) || (el.matches && el.matches("p.message, .message, .toc-heading, [hidden], [style*='display:none'], [style*='display: none']"));
     const tokens = [];
     walk(body, { quote: false, center: false }, tokens, skip);
 
     const book = PC.buildBook(tokens, frontLines, { html: true });
     const dtitle = (doc.title || "").trim();
-    if (!book.title) book.title = dtitle;
+    if (!book.title) {
+      const mb = doc.querySelector(".message b");
+      book.title = (mb && mb.textContent.trim()) || dtitle;
+    }
     if (!book.author) { const m = doc.querySelector('meta[name="author"]'); if (m) book.author = (m.getAttribute("content") || "").trim(); }
     if (!book.chapters.length) throw new Error("NO_TEXT");
     const fileTitle = (opts.fileName || "").replace(/\.x?html?$/i, "").replace(/_+/g, " ");
